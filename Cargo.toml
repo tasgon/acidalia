@@ -1,0 +1,16 @@
+[package]
+name = "acidalia"
+version = "0.1.0"
+authors = ["telastrus <10052313+telastrus@users.noreply.github.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winit = "0.22"
+shaderc = "0.6"
+futures = "0.3"
+
+[dependencies.wgpu]
+version = "0.5"
+features = ["vulkan"]
