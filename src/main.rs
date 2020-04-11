@@ -6,6 +6,7 @@ use winit::{
 
 mod game_render;
 mod graphics;
+mod shaders;
 
 fn main() {
     let event_loop = EventLoop::new();

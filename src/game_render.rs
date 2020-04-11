@@ -7,7 +7,7 @@ pub struct RenderState {
 
 impl RenderState {
     pub fn render(&mut self) {
-        let mut gfx = &mut self.gfx_state;
+        let gfx = &mut self.gfx_state;
         let frame = gfx.swapchain.get_next_texture().unwrap();
         let mut encoder = gfx
             .device
