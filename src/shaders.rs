@@ -1,6 +1,7 @@
 use shaderc;
 use std::collections::HashMap;
 use std::path::Path;
+use iced_wgpu::wgpu;
 
 pub struct ShaderState<T> {
     compiler: shaderc::Compiler,

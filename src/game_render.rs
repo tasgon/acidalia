@@ -1,8 +1,20 @@
 use crate::graphics::GraphicsState;
+use iced_wgpu::wgpu;
+use iced_winit::winit;
+
+#[inline(always)]
+fn color(c: (f64, f64, f64, f64)) -> wgpu::Color {
+    wgpu::Color {
+        r: c.0,
+        g: c.1,
+        b: c.2,
+        a: c.3,
+    }
+}
 
 pub struct RenderState {
     pub gfx_state: GraphicsState,
-    pub color: (f64, f64),
+    pub background_color: (f64, f64, f64, f64),
 }
 
 impl RenderState {
@@ -18,12 +30,7 @@ impl RenderState {
                 resolve_target: None,
                 load_op: wgpu::LoadOp::Clear,
                 store_op: wgpu::StoreOp::Store,
-                clear_color: wgpu::Color {
-                    r: self.color.0,
-                    g: self.color.1,
-                    b: 0.0,
-                    a: 1.0,
-                },
+                clear_color: color(self.background_color),
             }],
             depth_stencil_attachment: None,
         });
@@ -33,9 +40,11 @@ impl RenderState {
     pub fn update(&mut self, event: &winit::event::WindowEvent) {
         let size = self.gfx_state.get_size();
         if let winit::event::WindowEvent::CursorMoved { position, .. } = event {
-            self.color = (
+            self.background_color = (
                 position.x / (size.width as f64),
                 position.y / (size.height as f64),
+                0.0,
+                1.0,
             );
         }
     }

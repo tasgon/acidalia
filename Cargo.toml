@@ -7,9 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-winit = "0.22"
+#winit = "0.22"
 shaderc = "0.6"
-futures = "0.3"
+#futures = "0.3"
+iced_wgpu = { path = "../iced/wgpu/" }
+iced_winit = { path = "../iced/winit/" }
 
-[dependencies.wgpu]
-version = "0.5"
+#[dependencies.wgpu]
+#version = "0.5"

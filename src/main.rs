@@ -1,4 +1,4 @@
-use winit::{
+use iced_winit::winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -14,7 +14,7 @@ fn main() {
 
     let mut state = game_render::RenderState {
         gfx_state: graphics::GraphicsState::new(&window),
-        color: (0.0, 0.0),
+        background_color: (0.0, 0.0, 0.0, 1.0),
     };
 
     event_loop.run(move |event, _, control_flow| match event {
