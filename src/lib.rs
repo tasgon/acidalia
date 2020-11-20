@@ -1,19 +1,17 @@
-use iced_winit::winit::{
-    event::*,
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
-};
-
+pub mod ticker;
 mod game_render;
 mod graphics;
 mod shaders;
+mod game_loop;
+pub mod engine;
 
-fn main() {
+/*fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
     let mut state = game_render::RenderState {
         gfx_state: graphics::GraphicsState::new(&window),
+        fps_counter: fps::FPSCounter::new(fps::FPSCounterConfig { seconds_per_print: std::time::Duration::from_millis(5000) }),
         background_color: (0.0, 0.0, 0.0, 1.0),
     };
 
@@ -40,4 +38,5 @@ fn main() {
         },
         _ => *control_flow = ControlFlow::Wait,
     });
-}
+}*/
+

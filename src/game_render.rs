@@ -14,6 +14,7 @@ fn color(c: (f64, f64, f64, f64)) -> wgpu::Color {
 
 pub struct RenderState {
     pub gfx_state: GraphicsState,
+    pub fps_counter: crate::fps::FPSCounter,
     pub background_color: (f64, f64, f64, f64),
 }
 
@@ -35,11 +36,14 @@ impl RenderState {
             depth_stencil_attachment: None,
         });
         gfx.queue.submit(&[encoder.finish()]);
+        self.fps_counter.tick();
+        self.fps_counter.print();
     }
 
     pub fn update(&mut self, event: &winit::event::WindowEvent) {
         let size = self.gfx_state.get_size();
         if let winit::event::WindowEvent::CursorMoved { position, .. } = event {
+            //println!("Got event: ({}, {})", position.x, position.y);
             self.background_color = (
                 position.x / (size.width as f64),
                 position.y / (size.height as f64),

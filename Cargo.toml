@@ -10,8 +10,9 @@ edition = "2018"
 #winit = "0.22"
 shaderc = "0.6"
 #futures = "0.3"
-iced_wgpu = { path = "../iced/wgpu/" }
-iced_winit = { path = "../iced/winit/" }
+iced_wgpu = { git = "https://github.com/hecrj/iced" }
+iced_winit = { git = "https://github.com/hecrj/iced" }
+derive_more = "0.99"
 
 #[dependencies.wgpu]
 #version = "0.5"
