@@ -3,8 +3,10 @@ use iced_wgpu::wgpu;
 use iced_winit::{futures, winit};
 
 use futures::executor::block_on;
+use wgpu::BackendBit;
 
 pub struct GraphicsState {
+    pub instance: wgpu::Instance,
     pub surface: wgpu::Surface,
     pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
@@ -18,7 +20,8 @@ pub struct GraphicsState {
 impl GraphicsState {
     pub fn new(window: &winit::window::Window) -> Self {
         let size = window.inner_size();
-        let surface = wgpu::Surface::create(window);
+        let instance = wgpu::Instance::new(BackendBit::VULKAN);
+        let surface = unsafe { instance.create_surface(window) };
 
         let adapter_options = wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::Default,
@@ -26,20 +29,16 @@ impl GraphicsState {
         };
 
         let adapter = block_on(async {
-            wgpu::Adapter::request(&adapter_options, wgpu::BackendBit::VULKAN)
+            instance.request_adapter(&adapter_options)
                 .await
                 .unwrap()
         });
 
         let (device, queue) = block_on(async {
             adapter
-                .request_device(&wgpu::DeviceDescriptor {
-                    extensions: wgpu::Extensions {
-                        anisotropic_filtering: false,
-                    },
-                    limits: Default::default(),
-                })
+                .request_device(&wgpu::DeviceDescriptor::default(), None)
                 .await
+                .unwrap()
         });
 
         let swapchain_descriptor = wgpu::SwapChainDescriptor {
@@ -52,6 +51,7 @@ impl GraphicsState {
         let swapchain = device.create_swap_chain(&surface, &swapchain_descriptor);
 
         Self {
+            instance,
             surface,
             adapter,
             device,

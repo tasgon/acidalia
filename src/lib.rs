@@ -1,5 +1,4 @@
 pub mod ticker;
-mod game_render;
 mod graphics;
 mod shaders;
 mod game_loop;

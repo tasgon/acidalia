@@ -35,6 +35,11 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
     }
 
     pub fn create_shader(&self, key: impl AsRef<T>, gfx_state: &mut crate::graphics::GraphicsState) -> Option<wgpu::ShaderModule> {
-        Some(gfx_state.device.create_shader_module(self.get(key)?))
+        let source = wgpu::ShaderModuleSource::SpirV(self.get(key)?.into());
+        Some(gfx_state.device.create_shader_module(source))
     }
+}
+
+trait AsShaderSrc {
+    fn get_src(&mut self) -> String;
 }

@@ -17,8 +17,8 @@ impl Ticker {
         }
     }
 
-    pub fn tick(&mut self) -> Self {
-        if let Some(dur) = (self.now + self.target_delta).checked_duration_since(Instant::now()) {
+    pub fn tick(&mut self) {
+        if let Some(dur) = (self.now + self.target_delta.0).checked_duration_since(Instant::now()) {
             std::thread::sleep(dur);
         }
         self.now = Instant::now();
@@ -34,6 +34,6 @@ impl TickRate {
     }
 
     pub fn tick_duration(dur: Duration) -> Self {
-        Self(dur);
+        Self(dur)
     }
 }
