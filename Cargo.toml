@@ -3,6 +3,13 @@ name = "acidalia"
 version = "0.0.1"
 authors = ["telastrus <10052313+telastrus@users.noreply.github.com>"]
 edition = "2018"
+description = "The game's game engine's engine"
+license = "MPL-2.0"
+license-file = "LICENSE"
+keywords = ["gamedev", "graphics", "game", "engine", "events"]
+homepage = "https://github.com/tasgon/acidalia"
+repository = "https://github.com/tasgon/acidalia"
+documentation = "https://docs.rs/acidalia"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,5 +24,5 @@ imgui-wgpu = "0.14"
 imgui = "0.7"
 imgui-winit-support = "0.7"
 
-[patch.crates-io]
-winit = { path = "../winit/" }
+#[patch.crates-io]
+#winit = { path = "../winit/" }
