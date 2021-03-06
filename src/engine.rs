@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use iced_winit::winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -29,16 +27,18 @@ impl Engine {
     }
 
     pub fn add_screen(&mut self, screen: impl Into<Box<dyn Screen>>) {
-        //self.screens.push(screen.into());
+        self.screens.push(screen.into());
     }
 
     pub fn run(mut self) {
         let evloop = self.event_loop.take().unwrap();
-        let id = self.window.id();
+        //let id = self.window.id();
         evloop.run(move |event, _, control_flow| {
             if let Some(screen) = { self.screens.last_mut() } {
                 screen.update(event);
                 screen.render(&self.graphics_state);
+            } else {
+                *control_flow = ControlFlow::Exit;
             }
         });
     }

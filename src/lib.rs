@@ -1,7 +1,7 @@
 pub mod ticker;
 mod graphics;
 mod shaders;
-mod game_loop;
+//mod game_loop;
 pub mod engine;
 
 /*fn main() {

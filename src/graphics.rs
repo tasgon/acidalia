@@ -24,7 +24,7 @@ impl GraphicsState {
         let surface = unsafe { instance.create_surface(window) };
 
         let adapter_options = wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::Default,
+            power_preference: wgpu::PowerPreference::default(),
             compatible_surface: Some(&surface),
         };
 
@@ -42,7 +42,7 @@ impl GraphicsState {
         });
 
         let swapchain_descriptor = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: size.width,
             height: size.height,
