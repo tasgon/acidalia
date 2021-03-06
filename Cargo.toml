@@ -5,7 +5,6 @@ authors = ["telastrus <10052313+telastrus@users.noreply.github.com>"]
 edition = "2018"
 description = "The game's game engine's engine"
 license = "MPL-2.0"
-license-file = "LICENSE"
 keywords = ["gamedev", "graphics", "game", "engine", "events"]
 homepage = "https://github.com/tasgon/acidalia"
 repository = "https://github.com/tasgon/acidalia"
