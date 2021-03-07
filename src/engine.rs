@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use iced_wgpu::wgpu;
 use iced_winit::winit::{
     event::*,
@@ -12,6 +14,7 @@ pub struct Engine {
     pub window: Window,
     pub graphics_state: GraphicsState,
     pub shader_state: InternalShaderState,
+    start: Instant,
     //screens: Vec<Box<dyn Screen>>,
 }
 
@@ -27,6 +30,7 @@ impl Engine {
             window,
             graphics_state,
             shader_state,
+            start: Instant::now(),
             //screens: vec![],
         }
     }
@@ -34,6 +38,7 @@ impl Engine {
     pub fn run(mut self, screen: Screen) {
         let evloop = self.event_loop.take().unwrap();
         let mut screens: Vec<Screen> = vec![screen];
+        self.start = Instant::now();
         evloop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;
             let last_sc = screens.last_mut();
@@ -83,24 +88,26 @@ impl Engine {
                                 depth_stencil_attachment: None,
                             });
 
-                        for element in screen {
+                        for element in screen.iter_mut() {
                             element.render(&mut self, &frame, &mut render_pass);
                         }
                         std::mem::drop(render_pass);
 
                         self.graphics_state.queue.submit(Some(encoder.finish()));
                     }
-                    ev => {
-                        for element in screen {
-                            element.update(&mut self, &ev)
-                        }
-                    }
+                    _ => ()
+                }
+                for element in screen.iter_mut().rev() {
+                    // TODO: allow event cancelling
+                    element.update(&mut self, &event)
                 }
             } else {
                 *control_flow = ControlFlow::Exit;
             }
         });
     }
+
+    pub fn start(&self) -> Instant { self.start }
 }
 
 pub trait Element {
