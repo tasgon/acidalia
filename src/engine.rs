@@ -7,6 +7,7 @@ use iced_winit::winit::{
 
 use crate::{graphics::GraphicsState, shaders::InternalShaderState};
 
+
 /// The core engine that constructs the window and graphics states, and passes events
 /// to user-defined screens.
 pub struct Engine {
@@ -14,12 +15,13 @@ pub struct Engine {
     pub window: Window,
     pub graphics_state: GraphicsState,
     pub(crate) shader_state: InternalShaderState,
+    pub background_color: wgpu::Color,
 }
 
 impl Engine {
     /// Constructs a new `Engine`. Currently, this does not let you set parameters, but that
     /// will be available in the future, likely through an `EngineBuilder`.
-    pub fn new() -> Self {
+    pub fn new(bg_color: Option<wgpu::Color>) -> Self {
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new().build(&event_loop).unwrap();
         let mut graphics_state = GraphicsState::new(&window);
@@ -30,6 +32,7 @@ impl Engine {
             window,
             graphics_state,
             shader_state,
+            background_color: bg_color.unwrap_or_default(),
         }
     }
 
@@ -74,12 +77,7 @@ impl Engine {
                                     attachment: &frame.output.view,
                                     resolve_target: None,
                                     ops: wgpu::Operations {
-                                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                                            r: 0.1,
-                                            g: 0.2,
-                                            b: 0.3,
-                                            a: 0.0,
-                                        }),
+                                        load: wgpu::LoadOp::Clear(self.background_color),
                                         store: true,
                                     },
                                 }],
