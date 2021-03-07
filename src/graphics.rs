@@ -28,11 +28,7 @@ impl GraphicsState {
             compatible_surface: Some(&surface),
         };
 
-        let adapter = block_on(async {
-            instance.request_adapter(&adapter_options)
-                .await
-                .unwrap()
-        });
+        let adapter = block_on(async { instance.request_adapter(&adapter_options).await.unwrap() });
 
         let (device, queue) = block_on(async {
             adapter

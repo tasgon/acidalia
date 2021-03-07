@@ -1,5 +1,5 @@
-use std::time::{Instant, Duration};
 use derive_more::AsRef;
+use std::time::{Duration, Instant};
 
 pub struct Ticker {
     start_time: Instant,
@@ -13,7 +13,7 @@ impl Ticker {
         Self {
             start_time: time,
             now: time,
-            target_delta
+            target_delta,
         }
     }
 

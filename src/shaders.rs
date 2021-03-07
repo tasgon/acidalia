@@ -1,7 +1,7 @@
+use iced_wgpu::wgpu;
 use shaderc;
 use std::collections::HashMap;
 use std::path::Path;
-use iced_wgpu::wgpu;
 
 pub struct ShaderState<T> {
     compiler: shaderc::Compiler,
@@ -18,11 +18,26 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
         }
     }
 
-    pub fn load_src(&mut self, key: T, src: impl AsRef<Path>, entry: &str, kind: shaderc::ShaderKind, options: &Option<shaderc::CompileOptions>) {
+    pub fn load_src(
+        &mut self,
+        key: T,
+        src: impl AsRef<Path>,
+        entry: &str,
+        kind: shaderc::ShaderKind,
+        options: &Option<shaderc::CompileOptions>,
+    ) {
         let path: &Path = src.as_ref();
-        let filename = path.file_name().unwrap().to_str().expect("Invalid file name!");
-        let data = std::fs::read_to_string(path).expect(&format!("Unable to read from {}!", filename));
-        let res = self.compiler.compile_into_spirv(&data, kind, filename, entry, options.as_ref()).unwrap();
+        let filename = path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .expect("Invalid file name!");
+        let data =
+            std::fs::read_to_string(path).expect(&format!("Unable to read from {}!", filename));
+        let res = self
+            .compiler
+            .compile_into_spirv(&data, kind, filename, entry, options.as_ref())
+            .unwrap();
         self.shader_map.insert(key, res);
     }
 
@@ -34,13 +49,17 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
         Some(self.get_artifact(key)?.as_binary())
     }
 
-    pub fn create_shader(&self, key: impl AsRef<T>, gfx_state: &mut crate::graphics::GraphicsState) -> Option<wgpu::ShaderModule> {
+    pub fn create_shader(
+        &self,
+        key: impl AsRef<T>,
+        gfx_state: &mut crate::graphics::GraphicsState,
+    ) -> Option<wgpu::ShaderModule> {
         let source = wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::SpirV(self.get(key)?.into()),
             flags: wgpu::ShaderFlags::default(),
         };
-        
+
         Some(gfx_state.device.create_shader_module(&source))
     }
 }

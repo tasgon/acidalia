@@ -1,9 +1,9 @@
+use iced_wgpu::wgpu;
 use iced_winit::winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
-use iced_wgpu::wgpu;
 
 use crate::graphics::GraphicsState;
 
@@ -27,32 +27,59 @@ impl Engine {
         }
     }
 
-    pub fn run(mut self, screen: impl Screen + 'static) {
+    pub fn run(mut self, screen: Screen) {
         let evloop = self.event_loop.take().unwrap();
-        let mut screens: Vec<Box<dyn Screen>> = vec![Box::new(screen)];
+        let mut screens: Vec<Screen> = vec![screen];
         evloop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;
             let last_sc = screens.last_mut();
-            if let Some(mut screen) = last_sc {
+            if let Some(screen) = last_sc {
                 match event {
                     Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => *control_flow = ControlFlow::Exit,
                     Event::WindowEvent { event: WindowEvent::Resized(_), ..} => {
-                        let gs = &mut self.graphics_state;
                         let size = self.window.inner_size();
-
-                        gs.swapchain_descriptor = wgpu::SwapChainDescriptor {
-                            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-                            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                            width: size.width as u32,
-                            height: size.height as u32,
-                            present_mode: wgpu::PresentMode::Mailbox,
-                        };
-        
-                        gs.swapchain = gs.device.create_swap_chain(&gs.surface, &gs.swapchain_descriptor);
+                        self.graphics_state.set_size(size);
                     }
                     Event::MainEventsCleared => self.window.request_redraw(),
-                    Event::RedrawEventsCleared => screen.render(&self),
-                    ev => screen.update(&self, ev), 
+                    Event::RedrawEventsCleared => {
+                        let frame = match self.graphics_state.swapchain.get_current_frame() {
+                            Ok(frame) => frame,
+                            Err(e) => {
+                                eprintln!("dropped frame: {:?}", e);
+                                return;
+                            }
+                        };
+                
+                        let mut encoder = self.graphics_state
+                            .device
+                            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+                        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: None,
+                            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                                attachment: &frame.output.view,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                                        r: 0.1,
+                                        g: 0.2,
+                                        b: 0.3,
+                                        a: 0.0,
+                                    }),
+                                    store: true,
+                                },
+                            }],
+                            depth_stencil_attachment: None,
+                        });
+
+                        for element in screen {
+                            element.render(&mut self, &frame, &mut render_pass);
+                        }
+                        std::mem::drop(render_pass);
+                        
+                        self.graphics_state.queue.submit(Some(encoder.finish()));
+                    },
+                    ev => for element in screen { element.update(&mut self, &ev) }, 
                 }
             }
             else {
@@ -62,7 +89,16 @@ impl Engine {
     }
 }
 
-pub trait Screen {
-    fn update(&mut self, engine: &Engine, event: Event<()>);
-    fn render(&mut self, engine: &Engine);
+pub trait Element {
+    fn update(&mut self, engine: &mut Engine, event: &Event<()>);
+    fn render<'a: 'rp, 'rp>(&'a mut self, engine: &mut Engine, frame: &wgpu::SwapChainFrame, render_pass: &mut wgpu::RenderPass<'rp>) { }
+}
+
+type Screen = Vec<Box<dyn Element>>;
+
+#[macro_export]
+macro_rules! screen {
+    ($($el:expr),*) => {
+        vec![$(Box::new($el), )*]
+    };
 }

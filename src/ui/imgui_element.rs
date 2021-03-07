@@ -1,7 +1,7 @@
-pub use imgui::{self, *};
 use iced_wgpu::wgpu;
+pub use imgui::{self, *};
 
-use crate::engine::{Engine, Screen};
+use crate::engine::{Engine, Element};
 pub struct ImguiElement<F: Fn(&Ui)> {
     func: F,
     gui: imgui::Context,
@@ -15,7 +15,11 @@ impl<F: Fn(&Ui)> ImguiElement<F> {
         let gs = &engine.graphics_state;
         let mut gui = imgui::Context::create();
         let mut platform = imgui_winit_support::WinitPlatform::init(&mut gui);
-        platform.attach_window(gui.io_mut(), &engine.window, imgui_winit_support::HiDpiMode::Default);
+        platform.attach_window(
+            gui.io_mut(),
+            &engine.window,
+            imgui_winit_support::HiDpiMode::Default,
+        );
 
         gui.set_ini_filename(None);
 
@@ -48,21 +52,14 @@ impl<F: Fn(&Ui)> ImguiElement<F> {
     }
 }
 
-impl<F: Fn(&Ui)> Screen for ImguiElement<F> {
-    fn update(&mut self, engine: &Engine, event: iced_winit::winit::event::Event<()>) {
-        self.platform.handle_event(self.gui.io_mut(), &engine.window, &event);
+impl<F: Fn(&Ui)> Element for ImguiElement<F> {
+    fn update(&mut self, engine: &mut Engine, event: &iced_winit::winit::event::Event<()>) {
+        self.platform
+            .handle_event(self.gui.io_mut(), &engine.window, event);
     }
 
-    fn render(&mut self, engine: &Engine) {
+    fn render<'a: 'rp, 'rp>(&'a mut self, engine: &mut Engine, frame: &wgpu::SwapChainFrame, rpass: &mut wgpu::RenderPass<'rp>) {
         let gs = &engine.graphics_state;
-
-        let frame = match gs.swapchain.get_current_frame() {
-            Ok(frame) => frame,
-            Err(e) => {
-                eprintln!("dropped frame: {:?}", e);
-                return;
-            }
-        };
         self.platform
             .prepare_frame(self.gui.io_mut(), &engine.window)
             .expect("Failed to prepare frame");
@@ -70,36 +67,15 @@ impl<F: Fn(&Ui)> Screen for ImguiElement<F> {
         let ui = self.gui.frame();
         (self.func)(&ui);
 
-        let mut encoder = gs.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
         if self.last_cursor != Some(ui.mouse_cursor()) {
             self.last_cursor = Some(ui.mouse_cursor());
             self.platform.prepare_render(&ui, &engine.window);
         }
 
-        // This'll probably move
-        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: None,
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &frame.output.view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.1,
-                        g: 0.2,
-                        b: 0.3,
-                        a: 1.0,
-                    }),
-                    store: true,
-                },
-            }],
-            depth_stencil_attachment: None,
-        });
-
-        self.renderer.render(ui.render(), &gs.queue, &gs.device, &mut rpass).unwrap();
+        self.renderer
+            .render(ui.render(), &gs.queue, &gs.device, rpass)
+            .unwrap();
 
         std::mem::drop(rpass);
-
-        gs.queue.submit(Some(encoder.finish()));
     }
 }
