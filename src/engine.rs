@@ -5,7 +5,7 @@ use iced_winit::winit::{
     window::{Window, WindowBuilder},
 };
 
-use crate::{graphics::GraphicsState, shaders::{InternalShaderState}};
+use crate::{graphics::GraphicsState, shaders::InternalShaderState};
 
 /// The core engine that constructs the window and graphics states, and passes events
 /// to user-defined screens.
@@ -93,7 +93,7 @@ impl Engine {
 
                         self.graphics_state.queue.submit(Some(encoder.finish()));
                     }
-                    _ => ()
+                    _ => (),
                 }
                 for element in screen.iter_mut().rev() {
                     // TODO: allow event cancelling
@@ -110,6 +110,7 @@ impl Engine {
 pub trait Element {
     /// Process `winit` events.
     fn update(&mut self, engine: &mut Engine, event: &Event<()>);
+
     /// Draw to the screen. Note: it is expected that trait implementers will use
     /// the supplied render pass, however, to explain the lifetime annotations,
     /// the render pass is provided to all elements in the screen, so they all
@@ -125,7 +126,6 @@ pub trait Element {
 /// A list of `Elements` that will all update and draw on the screen.
 /// The draw order is the element order.
 type Screen = Vec<Box<dyn Element>>;
-
 
 /// Convenience macro to construct a `Screen` from a list of objects
 /// that implement the `Element` trait.

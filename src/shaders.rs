@@ -51,7 +51,8 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
             source: wgpu::ShaderSource::SpirV(res.as_binary().into()),
             flags: wgpu::ShaderFlags::default(),
         };
-        self.shader_map.insert(key, gs.device.create_shader_module(&desc));
+        self.shader_map
+            .insert(key, gs.device.create_shader_module(&desc));
     }
 
     /// Loads a shader from an `&str` source string.
@@ -74,7 +75,8 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
             source: wgpu::ShaderSource::SpirV(res.as_binary().into()),
             flags: wgpu::ShaderFlags::default(),
         };
-        self.shader_map.insert(key, gs.device.create_shader_module(&desc));
+        self.shader_map
+            .insert(key, gs.device.create_shader_module(&desc));
     }
 
     pub fn get(&self, key: &T) -> Option<&wgpu::ShaderModule> {
@@ -100,7 +102,23 @@ pub type InternalShaderState = ShaderState<InternalShaders>;
 impl InternalShaderState {
     /// Initializes the internal shaders.
     pub(crate) fn init_shaders(&mut self, gs: &mut GraphicsState) {
-        self.load_str(InternalShaders::ICED_VERT, "iced.vert",include_str!("gl/iced.vert"), "main", shaderc::ShaderKind::Vertex, None, gs);
-        self.load_str(InternalShaders::ICED_FRAG, "iced.frag", include_str!("gl/iced.frag"), "main", shaderc::ShaderKind::Fragment, None, gs);
+        self.load_str(
+            InternalShaders::ICED_VERT,
+            "iced.vert",
+            include_str!("gl/iced.vert"),
+            "main",
+            shaderc::ShaderKind::Vertex,
+            None,
+            gs,
+        );
+        self.load_str(
+            InternalShaders::ICED_FRAG,
+            "iced.frag",
+            include_str!("gl/iced.frag"),
+            "main",
+            shaderc::ShaderKind::Fragment,
+            None,
+            gs,
+        );
     }
 }
