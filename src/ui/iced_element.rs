@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use futures::task::SpawnExt;
 use iced_wgpu::{
     wgpu::{self, util::DeviceExt},
@@ -23,8 +25,9 @@ const NUM_INDICES: u32 = 6;
 
 /// Renders and handles events for objects implementing [`Program`].
 #[allow(dead_code)]
-pub struct IcedElement<T: Program<Renderer = Renderer> + 'static> {
+pub struct IcedElement<T: Program<Renderer = Renderer> + 'static, F> {
     state: program::State<T>,
+    _phantom: PhantomData<F>,
     viewport: Viewport,
     renderer: Renderer,
     debug: Debug,
@@ -43,7 +46,7 @@ pub struct IcedElement<T: Program<Renderer = Renderer> + 'static> {
     pipeline: wgpu::RenderPipeline,
 }
 
-impl<T: Program<Renderer = Renderer>> IcedElement<T> {
+impl<T: Program<Renderer = Renderer>, F> IcedElement<T, F> {
     /// Construct an `IcedElement` given a program object.
     pub fn new(engine: &mut Engine, iced_program: T) -> Self {
         let gs = &mut engine.graphics_state;
@@ -182,6 +185,7 @@ impl<T: Program<Renderer = Renderer>> IcedElement<T> {
 
         Self {
             state,
+            _phantom: PhantomData::default(),
             viewport,
             renderer,
             debug,
@@ -200,8 +204,10 @@ impl<T: Program<Renderer = Renderer>> IcedElement<T> {
     }
 }
 
-impl<T: Program<Renderer = Renderer>> Element for IcedElement<T> {
-    fn update(&mut self, engine: &mut Engine, event: &winit::event::Event<()>) {
+impl<T: Program<Renderer = Renderer>, F> Element for IcedElement<T, F> {
+    type Data = F;
+
+    fn update(&mut self, engine: &mut Engine, data: &mut F, event: &winit::event::Event<()>) {
         match event {
             Event::WindowEvent { event: wev, .. } => {
                 match wev {
@@ -283,6 +289,7 @@ impl<T: Program<Renderer = Renderer>> Element for IcedElement<T> {
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
+        data: &mut F,
         _frame: &wgpu::SwapChainFrame,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {

@@ -37,9 +37,9 @@ impl Engine {
     }
 
     /// Runs the event loop with an initial `Screen`.
-    pub fn run(mut self, screen: Screen) {
+    pub fn run<T: 'static>(mut self, screen: Screen<T>, mut data: T) {
         let evloop = self.event_loop.take().unwrap();
-        let mut screens: Vec<Screen> = vec![screen];
+        let mut screens: Vec<Screen<T>> = vec![screen];
         evloop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;
             let last_sc = screens.last_mut();
@@ -85,7 +85,7 @@ impl Engine {
                             });
 
                         for element in screen.iter_mut() {
-                            element.render(&mut self, &frame, &mut render_pass);
+                            element.render(&mut self, &mut data, &frame, &mut render_pass);
                         }
                         std::mem::drop(render_pass);
 
@@ -95,7 +95,7 @@ impl Engine {
                 }
                 for element in screen.iter_mut().rev() {
                     // TODO: allow event cancelling
-                    element.update(&mut self, &event)
+                    element.update(&mut self, &mut data, &event)
                 }
             } else {
                 *control_flow = ControlFlow::Exit;
@@ -106,8 +106,10 @@ impl Engine {
 
 /// Represents items that have update events and draw to the screen.
 pub trait Element {
+    type Data;
+
     /// Process `winit` events.
-    fn update(&mut self, engine: &mut Engine, event: &Event<()>);
+    fn update(&mut self, engine: &mut Engine, data: &mut Self::Data, event: &Event<()>);
 
     /// Draw to the screen. Note: it is expected that trait implementers will use
     /// the supplied render pass, however, to explain the lifetime annotations,
@@ -116,6 +118,7 @@ pub trait Element {
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
+        data: &mut Self::Data,
         frame: &wgpu::SwapChainFrame,
         render_pass: &mut wgpu::RenderPass<'rp>,
     );
@@ -123,7 +126,7 @@ pub trait Element {
 
 /// A list of `Elements` that will all update and draw on the screen.
 /// The draw order is the element order.
-type Screen = Vec<Box<dyn Element>>;
+type Screen<T> = Vec<Box<dyn Element<Data = T>>>;
 
 /// Convenience macro to construct a `Screen` from a list of objects
 /// that implement the `Element` trait.
