@@ -1,7 +1,5 @@
-use bytemuck::cast_slice;
-use egui_wgpu_backend::wgpu::util::DeviceExt;
 use futures::task::SpawnExt;
-use iced_wgpu::{wgpu, Backend, Renderer, Settings, Viewport};
+use iced_wgpu::{Backend, Renderer, Settings, Viewport, wgpu::{self, util::DeviceExt}};
 use iced_winit::{
     conversion, futures, program,
     winit::{
@@ -17,6 +15,8 @@ use crate::{engine::{Element, Engine}, shaders::InternalShaders};
 const INDICES: &[u16] = &[0, 2, 1, 1, 2, 3];
 const NUM_INDICES: u32 = 6;
 
+/// Renders and handles events for objects implementing [`Program`].
+#[allow(dead_code)] 
 pub struct IcedElement<T: Program<Renderer = Renderer> + 'static> {
     state: program::State<T>,
     viewport: Viewport,
@@ -38,6 +38,7 @@ pub struct IcedElement<T: Program<Renderer = Renderer> + 'static> {
 }
 
 impl<T: Program<Renderer = Renderer>> IcedElement<T> {
+    /// Construct an `IcedElement` given a program object.
     pub fn new(engine: &mut Engine, iced_program: T) -> Self {
         let gs = &mut engine.graphics_state;
         let mut debug = Debug::new();
@@ -200,6 +201,39 @@ impl<T: Program<Renderer = Renderer>> Element for IcedElement<T> {
                             Size::new(size.width, size.height),
                             engine.window.scale_factor(),
                         );
+
+                        // This is just copied from `new`.
+                        // TODO: maybe look at making dest_* and bind_group MaybeUninit and
+                        //       move this code to its own function?
+                        let gs = &engine.graphics_state;
+                        self.dest_tex = gs.device.create_texture(&wgpu::TextureDescriptor {
+                            label: Some("iced tex"),
+                            size: wgpu::Extent3d {
+                                width: gs.get_size().width,
+                                height: gs.get_size().height,
+                                depth: 1,
+                            },
+                            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                            mip_level_count: 1,
+                            sample_count: 1,
+                            dimension: wgpu::TextureDimension::D2,
+                            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::RENDER_ATTACHMENT,
+                        });
+                        self.dest_view = self.dest_tex.create_view(&wgpu::TextureViewDescriptor::default());
+                        self.bind_group = gs.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            layout: &self.bind_group_layout,
+                            entries: &[
+                                wgpu::BindGroupEntry {
+                                    binding: 0,
+                                    resource: wgpu::BindingResource::TextureView(&self.dest_view),
+                                },
+                                wgpu::BindGroupEntry {
+                                    binding: 1,
+                                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                                },
+                            ],
+                            label: Some("iced bg"),
+                        });
                     }
                     _ => (),
                 }
@@ -233,35 +267,31 @@ impl<T: Program<Renderer = Renderer>> Element for IcedElement<T> {
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
-        frame: &wgpu::SwapChainFrame,
+        _frame: &wgpu::SwapChainFrame,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {
-        let start = engine.start();
         let gs = &mut engine.graphics_state;
         let mut encoder = gs
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("iced encoder") });
 
-        {
-            let mut render_pass =
-                encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: None,
-                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &self.dest_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color {
-                                r: 0.0,
-                                g: 0.0,
-                                b: 0.0,
-                                a: 0.0,
-                            }),
-                            store: true,
-                        },
-                    }],
-                    depth_stencil_attachment: None,
-                });
-        }
+        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: None,
+            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                attachment: &self.dest_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 0.0,
+                    }),
+                    store: true,
+                },
+            }],
+            depth_stencil_attachment: None,
+        });
 
         self.renderer.backend_mut().draw(
             &gs.device,

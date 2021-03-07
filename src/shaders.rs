@@ -5,12 +5,15 @@ use std::path::Path;
 
 use crate::graphics::GraphicsState;
 
+/// A struct that provides shader compilation and access from the program.
+/// Utilizes `shaderc` to compile GLSL source into SPIR-V.
 pub struct ShaderState<T> {
     compiler: shaderc::Compiler,
     shader_map: HashMap<T, wgpu::ShaderModule>,
 }
 
 impl<T: Eq + std::hash::Hash> ShaderState<T> {
+    /// Construct a new `ShaderState`
     pub fn new() -> Self {
         let compiler = shaderc::Compiler::new().unwrap();
         let shader_map = HashMap::new();
@@ -20,6 +23,8 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
         }
     }
 
+    /// Loads a shader from a file. In the future, shaders reloaded from here
+    /// will have hot-reloading.
     pub fn load_src(
         &mut self,
         key: T,
@@ -49,6 +54,7 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
         self.shader_map.insert(key, gs.device.create_shader_module(&desc));
     }
 
+    /// Loads a shader from an `&str` source string.
     pub fn load_str(
         &mut self,
         key: T,
@@ -80,18 +86,21 @@ trait AsShaderSrc {
     fn get_src(&mut self) -> String;
 }
 
+///The key enums for the internal shaders.
 #[derive(PartialEq, Eq, Hash)]
+#[allow(non_camel_case_types)]
 pub enum InternalShaders {
     ICED_VERT,
     ICED_FRAG,
 }
 
+/// The internal shader state.
 pub type InternalShaderState = ShaderState<InternalShaders>;
 
 impl InternalShaderState {
-    pub fn init_shaders(&mut self, gs: &mut GraphicsState) {
+    /// Initializes the internal shaders.
+    pub(crate) fn init_shaders(&mut self, gs: &mut GraphicsState) {
         self.load_str(InternalShaders::ICED_VERT, "iced.vert",include_str!("gl/iced.vert"), "main", shaderc::ShaderKind::Vertex, None, gs);
         self.load_str(InternalShaders::ICED_FRAG, "iced.frag", include_str!("gl/iced.frag"), "main", shaderc::ShaderKind::Fragment, None, gs);
-        println!("Initialized shaders");
     }
 }

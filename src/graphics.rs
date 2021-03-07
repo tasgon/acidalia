@@ -5,6 +5,7 @@ use iced_winit::{futures, winit};
 use futures::executor::block_on;
 use wgpu::BackendBit;
 
+/// A struct containing everything necessary to interact with wgpu.
 pub struct GraphicsState {
     pub instance: wgpu::Instance,
     pub surface: wgpu::Surface,
@@ -18,7 +19,8 @@ pub struct GraphicsState {
 }
 
 impl GraphicsState {
-    pub fn new(window: &winit::window::Window) -> Self {
+    /// Creates a new `GraphicsState` from a `winit` window.
+    pub(crate) fn new(window: &winit::window::Window) -> Self {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(BackendBit::VULKAN);
         let surface = unsafe { instance.create_surface(window) };
@@ -58,7 +60,8 @@ impl GraphicsState {
         }
     }
 
-    pub fn set_size(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+    /// Sets the size and updates the swapchain & descriptor.
+    pub(crate) fn set_size(&mut self, size: winit::dpi::PhysicalSize<u32>) {
         self.size = size;
         self.swapchain_descriptor.width = size.width;
         self.swapchain_descriptor.height = size.height;
@@ -67,6 +70,7 @@ impl GraphicsState {
             .create_swap_chain(&self.surface, &self.swapchain_descriptor);
     }
 
+    /// Gets the swapchain's frame size.
     pub fn get_size(&self) -> winit::dpi::PhysicalSize<u32> {
         self.size
     }

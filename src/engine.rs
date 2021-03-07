@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use iced_wgpu::wgpu;
 use iced_winit::winit::{
     event::*,
@@ -7,18 +5,20 @@ use iced_winit::winit::{
     window::{Window, WindowBuilder},
 };
 
-use crate::{graphics::GraphicsState, shaders::{InternalShaderState, InternalShaders, ShaderState}};
+use crate::{graphics::GraphicsState, shaders::{InternalShaderState}};
 
+/// The core engine that constructs the window and graphics states, and passes events
+/// to user-defined screens.
 pub struct Engine {
     event_loop: Option<EventLoop<()>>,
     pub window: Window,
     pub graphics_state: GraphicsState,
-    pub shader_state: InternalShaderState,
-    start: Instant,
-    //screens: Vec<Box<dyn Screen>>,
+    pub(crate) shader_state: InternalShaderState,
 }
 
 impl Engine {
+    /// Constructs a new `Engine`. Currently, this does not let you set parameters, but that
+    /// will be available in the future, likely through an `EngineBuilder`.
     pub fn new() -> Self {
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new().build(&event_loop).unwrap();
@@ -30,15 +30,13 @@ impl Engine {
             window,
             graphics_state,
             shader_state,
-            start: Instant::now(),
-            //screens: vec![],
         }
     }
 
+    /// Runs the event loop with an initial `Screen`.
     pub fn run(mut self, screen: Screen) {
         let evloop = self.event_loop.take().unwrap();
         let mut screens: Vec<Screen> = vec![screen];
-        self.start = Instant::now();
         evloop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;
             let last_sc = screens.last_mut();
@@ -106,23 +104,31 @@ impl Engine {
             }
         });
     }
-
-    pub fn start(&self) -> Instant { self.start }
 }
 
+/// Represents items that have update events and draw to the screen.
 pub trait Element {
+    /// Process `winit` events.
     fn update(&mut self, engine: &mut Engine, event: &Event<()>);
+    /// Draw to the screen. Note: it is expected that trait implementers will use
+    /// the supplied render pass, however, to explain the lifetime annotations,
+    /// the render pass is provided to all elements in the screen, so they all
+    /// must live as long as the render pass.
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
         frame: &wgpu::SwapChainFrame,
         render_pass: &mut wgpu::RenderPass<'rp>,
-    ) {
-    }
+    );
 }
 
+/// A list of `Elements` that will all update and draw on the screen.
+/// The draw order is the element order.
 type Screen = Vec<Box<dyn Element>>;
 
+
+/// Convenience macro to construct a `Screen` from a list of objects
+/// that implement the `Element` trait.
 #[macro_export]
 macro_rules! screen {
     ($($el:expr),*) => {

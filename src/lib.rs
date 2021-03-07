@@ -1,6 +1,11 @@
 #[macro_use]
-pub mod engine;
+mod engine;
 mod graphics;
-mod shaders;
-pub mod ticker;
+/// Everything related to managing shaders.
+pub mod shaders;
+/// Everything related to drawing user interfaces.
 pub mod ui;
+
+pub use engine::*;
+pub use graphics::GraphicsState;
+

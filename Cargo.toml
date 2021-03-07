@@ -18,18 +18,16 @@ futures = "0.3"
 iced_wgpu = { git = "https://github.com/hecrj/iced", version = "0.3" }
 iced_winit = { git = "https://github.com/hecrj/iced", version = "0.2" }
 derive_more = "0.99"
+bytemuck = "1.5"
 
 imgui-wgpu = "0.14"
 imgui = "0.7"
 imgui-winit-support = "0.7"
 
-egui = "0.8"
-epi = "0.8"
-egui_wgpu_backend = "0.4"
-egui_winit_platform = "0.4"
-
-lyon = "0.17"
-bytemuck = "1.5"
+#egui = "0.8"
+#epi = "0.8"
+#egui_wgpu_backend = "0.4"
+#egui_winit_platform = "0.4"
 
 #[patch.crates-io]
 #winit = { path = "../winit/" }

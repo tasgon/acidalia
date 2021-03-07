@@ -2,6 +2,8 @@ use iced_wgpu::wgpu;
 pub use imgui::{self, *};
 
 use crate::engine::{Element, Engine};
+
+/// Builds and renders an ['imgui::UI'] constructed from a user-defined function.
 pub struct ImguiElement<F: Fn(&Ui)> {
     func: F,
     gui: imgui::Context,
@@ -11,6 +13,8 @@ pub struct ImguiElement<F: Fn(&Ui)> {
 }
 
 impl<F: Fn(&Ui)> ImguiElement<F> {
+    /// Construct a new `ImguiElement` from a function, which will take in a `Ui` struct and modify it
+    /// as needed before drawing.
     pub fn new(func: F, engine: &Engine) -> Self {
         let gs = &engine.graphics_state;
         let mut gui = imgui::Context::create();
@@ -61,7 +65,7 @@ impl<F: Fn(&Ui)> Element for ImguiElement<F> {
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
-        frame: &wgpu::SwapChainFrame,
+        _frame: &wgpu::SwapChainFrame,
         rpass: &mut wgpu::RenderPass<'rp>,
     ) {
         let gs = &engine.graphics_state;
