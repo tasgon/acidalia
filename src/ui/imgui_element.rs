@@ -62,7 +62,7 @@ impl<T, F: Fn(&Ui, &mut T)> ImguiElement<T, F> {
 impl<T, F: Fn(&Ui, &mut T)> Element for ImguiElement<T, F> {
     type Data = T;
 
-    fn update(&mut self, engine: &mut Engine, data: &mut T, event: &iced_winit::winit::event::Event<()>) {
+    fn update(&mut self, engine: &mut Engine, data: &mut Self::Data, event: &iced_winit::winit::event::Event<()>) {
         self.platform
             .handle_event(self.gui.io_mut(), &engine.window, event);
     }
@@ -70,7 +70,7 @@ impl<T, F: Fn(&Ui, &mut T)> Element for ImguiElement<T, F> {
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
-        data: &mut T,
+        data: &mut Self::Data,
         _frame: &wgpu::SwapChainFrame,
         rpass: &mut wgpu::RenderPass<'rp>,
     ) {

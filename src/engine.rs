@@ -124,6 +124,12 @@ pub trait Element {
     );
 }
 
+pub trait DataHandler {
+    type Data;
+
+    fn handle_data(&mut self, data: &mut Self::Data);
+}
+
 /// A list of `Elements` that will all update and draw on the screen.
 /// The draw order is the element order.
 type Screen<T> = Vec<Box<dyn Element<Data = T>>>;

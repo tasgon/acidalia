@@ -5,29 +5,25 @@ use iced_wgpu::{
     wgpu::{self, util::DeviceExt},
     Backend, Renderer, Settings, Viewport,
 };
-use iced_winit::{
-    conversion, futures, program,
-    winit::{
+use iced_winit::{Debug, Program, Size, conversion, futures, image::Data, program, winit::{
         self,
         dpi::PhysicalPosition,
         event::{Event, ModifiersState, WindowEvent},
-    },
-    Debug, Program, Size,
-};
+    }};
 
-use crate::{
-    engine::{Element, Engine},
-    shaders::InternalShaders,
-};
+use crate::{engine::{Element, Engine}, shaders::InternalShaders};
 
 const INDICES: &[u16] = &[0, 2, 1, 1, 2, 3];
 const NUM_INDICES: u32 = 6;
 
 /// Renders and handles events for objects implementing [`Program`].
+/// As all elements share a common data struct, a function must also be provided
+/// which will send messages to the state and read data from the state into the common struct.
 #[allow(dead_code)]
-pub struct IcedElement<T: Program<Renderer = Renderer> + 'static, F> {
+pub struct IcedElement<D, T: Program<Renderer = Renderer> + 'static, F: FnMut(&mut program::State<T>, &mut D)> {
     state: program::State<T>,
-    _phantom: PhantomData<F>,
+    func: F,
+    _phantom: PhantomData<D>,
     viewport: Viewport,
     renderer: Renderer,
     debug: Debug,
@@ -46,9 +42,9 @@ pub struct IcedElement<T: Program<Renderer = Renderer> + 'static, F> {
     pipeline: wgpu::RenderPipeline,
 }
 
-impl<T: Program<Renderer = Renderer>, F> IcedElement<T, F> {
-    /// Construct an `IcedElement` given a program object.
-    pub fn new(engine: &mut Engine, iced_program: T) -> Self {
+impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D)> IcedElement<D, T, F> {
+    /// Construct an `IcedElement` given a program object and a processing function.
+    pub fn new(engine: &mut Engine, iced_program: T, func: F) -> Self {
         let gs = &mut engine.graphics_state;
         let mut debug = Debug::new();
         let viewport = Viewport::with_physical_size(
@@ -185,6 +181,7 @@ impl<T: Program<Renderer = Renderer>, F> IcedElement<T, F> {
 
         Self {
             state,
+            func,
             _phantom: PhantomData::default(),
             viewport,
             renderer,
@@ -204,10 +201,10 @@ impl<T: Program<Renderer = Renderer>, F> IcedElement<T, F> {
     }
 }
 
-impl<T: Program<Renderer = Renderer>, F> Element for IcedElement<T, F> {
-    type Data = F;
+impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D)> Element for IcedElement<D, T, F> {
+    type Data = D;
 
-    fn update(&mut self, engine: &mut Engine, data: &mut F, event: &winit::event::Event<()>) {
+    fn update(&mut self, engine: &mut Engine, data: &mut Self::Data, event: &winit::event::Event<()>) {
         match event {
             Event::WindowEvent { event: wev, .. } => {
                 match wev {
@@ -284,12 +281,13 @@ impl<T: Program<Renderer = Renderer>, F> Element for IcedElement<T, F> {
             }
             _ => (),
         }
+        (self.func)(&mut self.state, data);
     }
 
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
-        data: &mut F,
+        data: &mut Self::Data,
         _frame: &wgpu::SwapChainFrame,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {
