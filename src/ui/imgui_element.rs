@@ -1,7 +1,7 @@
 use iced_wgpu::wgpu;
 pub use imgui::{self, *};
 
-use crate::engine::{Engine, Element};
+use crate::engine::{Element, Engine};
 pub struct ImguiElement<F: Fn(&Ui)> {
     func: F,
     gui: imgui::Context,
@@ -58,7 +58,12 @@ impl<F: Fn(&Ui)> Element for ImguiElement<F> {
             .handle_event(self.gui.io_mut(), &engine.window, event);
     }
 
-    fn render<'a: 'rp, 'rp>(&'a mut self, engine: &mut Engine, frame: &wgpu::SwapChainFrame, rpass: &mut wgpu::RenderPass<'rp>) {
+    fn render<'a: 'rp, 'rp>(
+        &'a mut self,
+        engine: &mut Engine,
+        frame: &wgpu::SwapChainFrame,
+        rpass: &mut wgpu::RenderPass<'rp>,
+    ) {
         let gs = &engine.graphics_state;
         self.platform
             .prepare_frame(self.gui.io_mut(), &engine.window)

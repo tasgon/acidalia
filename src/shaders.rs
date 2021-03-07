@@ -3,6 +3,8 @@ use shaderc;
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::graphics::GraphicsState;
+
 pub struct ShaderState<T> {
     compiler: shaderc::Compiler,
     shader_map: HashMap<T, shaderc::CompilationArtifact>,
@@ -52,18 +54,32 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
     pub fn create_shader(
         &self,
         key: impl AsRef<T>,
-        gfx_state: &mut crate::graphics::GraphicsState,
+        gs: &mut crate::graphics::GraphicsState,
     ) -> Option<wgpu::ShaderModule> {
         let source = wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::SpirV(self.get(key)?.into()),
             flags: wgpu::ShaderFlags::default(),
         };
-
-        Some(gfx_state.device.create_shader_module(&source))
+        // TODO: maybe store the shader modules instead of the artifacts?
+        Some(gs.device.create_shader_module(&source))
     }
 }
 
 trait AsShaderSrc {
     fn get_src(&mut self) -> String;
+}
+
+#[derive(PartialEq, Eq, Hash)]
+pub enum InternalShaders {
+    ICED_VERT,
+    ICED_FRAG,
+}
+
+pub type InternalShaderState = ShaderState<InternalShaders>;
+
+impl InternalShaderState {
+    pub fn init_shaders(&mut self, gs: &mut GraphicsState) {
+        
+    }
 }
