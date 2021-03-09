@@ -4,7 +4,7 @@ pub use imgui::{self, *};
 
 use crate::engine::{Element, Engine};
 
-/// Builds and renders an ['imgui::UI'] constructed from a user-defined function.
+/// Builds and renders an [`imgui::Ui`] constructed from a user-defined function.
 pub struct ImguiElement<T, F: FnMut(&Ui, &mut T)> {
     func: F,
     _phantom: PhantomData<T>,
@@ -62,7 +62,7 @@ impl<T, F: Fn(&Ui, &mut T)> ImguiElement<T, F> {
 impl<T, F: Fn(&Ui, &mut T)> Element for ImguiElement<T, F> {
     type Data = T;
 
-    fn update(&mut self, engine: &mut Engine, data: &mut Self::Data, event: &crate::winit::event::Event<()>) {
+    fn update(&mut self, engine: &mut Engine, _data: &mut Self::Data, event: &crate::winit::event::Event<()>) {
         self.platform
             .handle_event(self.gui.io_mut(), &engine.window, event);
     }

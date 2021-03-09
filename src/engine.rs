@@ -2,7 +2,7 @@ use crate::wgpu;
 use crate::winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder},
+    window::{Window},
 };
 
 use crate::{EngineBuilder, graphics::GraphicsState, shaders::InternalShaderState};
@@ -122,12 +122,6 @@ pub trait Element {
         frame: &wgpu::SwapChainFrame,
         render_pass: &mut wgpu::RenderPass<'rp>,
     );
-}
-
-pub trait DataHandler {
-    type Data;
-
-    fn handle_data(&mut self, data: &mut Self::Data);
 }
 
 /// A list of `Elements` that will all update and draw on the screen.
