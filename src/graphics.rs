@@ -1,9 +1,9 @@
 //use futures::executor::block_on;
-use iced_wgpu::wgpu;
-use iced_winit::{futures, winit};
+use crate::wgpu::{self, BackendBit};
+use futures;
+use crate::winit;
 
 use futures::executor::block_on;
-use wgpu::BackendBit;
 
 /// A struct containing everything necessary to interact with wgpu.
 pub struct GraphicsState {

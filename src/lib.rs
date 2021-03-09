@@ -1,5 +1,6 @@
 #[macro_use]
 mod engine;
+mod engine_builder;
 mod graphics;
 /// Everything related to managing shaders.
 pub mod shaders;
@@ -7,5 +8,8 @@ pub mod shaders;
 pub mod ui;
 
 pub use engine::*;
+pub use engine_builder::EngineBuilder;
 pub use graphics::GraphicsState;
-pub use iced_wgpu::wgpu;
+
+pub use wgpu;
+pub use winit;

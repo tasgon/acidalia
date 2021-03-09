@@ -1,6 +1,6 @@
 [package]
 name = "acidalia"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["telastrus <10052313+telastrus@users.noreply.github.com>"]
 edition = "2018"
 description = "The game's game engine's engine"
@@ -12,13 +12,20 @@ documentation = "https://docs.rs/acidalia"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+iced = ["iced_wgpu", "iced_winit"]
+
 [dependencies]
 shaderc = "0.7"
 futures = "0.3"
-iced_wgpu = { git = "https://github.com/hecrj/iced", version = "0.3" }
-iced_winit = { git = "https://github.com/hecrj/iced", version = "0.2" }
+wgpu = "0.7"
+winit = "0.24"
 derive_more = "0.99"
 bytemuck = "1.5"
+
+iced_wgpu = { git = "https://github.com/hecrj/iced", version = "0.3", optional = true }
+iced_winit = { git = "https://github.com/hecrj/iced", version = "0.2", optional = true }
 
 imgui-wgpu = "0.14"
 imgui = "0.7"

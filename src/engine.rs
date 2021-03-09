@@ -1,11 +1,11 @@
-use iced_wgpu::wgpu;
-use iced_winit::winit::{
+use crate::wgpu;
+use crate::winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
 
-use crate::{graphics::GraphicsState, shaders::InternalShaderState};
+use crate::{EngineBuilder, graphics::GraphicsState, shaders::InternalShaderState};
 
 
 /// The core engine that constructs the window and graphics states, and passes events
@@ -21,9 +21,9 @@ pub struct Engine {
 impl Engine {
     /// Constructs a new `Engine`. Currently, this does not let you set parameters, but that
     /// will be available in the future, likely through an `EngineBuilder`.
-    pub fn new(bg_color: Option<wgpu::Color>) -> Self {
+    pub fn new(eb: EngineBuilder) -> Self {
         let event_loop = EventLoop::new();
-        let window = WindowBuilder::new().build(&event_loop).unwrap();
+        let window = eb.wb.build(&event_loop).unwrap();
         let mut graphics_state = GraphicsState::new(&window);
         let mut shader_state = InternalShaderState::new();
         shader_state.init_shaders(&mut graphics_state);
@@ -32,7 +32,7 @@ impl Engine {
             window,
             graphics_state,
             shader_state,
-            background_color: bg_color.unwrap_or_default(),
+            background_color: eb.bg_color,
         }
     }
 

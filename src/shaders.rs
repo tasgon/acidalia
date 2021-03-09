@@ -1,4 +1,4 @@
-use iced_wgpu::wgpu;
+use crate::wgpu;
 use shaderc;
 use std::collections::HashMap;
 use std::path::Path;
@@ -88,7 +88,7 @@ trait AsShaderSrc {
     fn get_src(&mut self) -> String;
 }
 
-///The key enums for the internal shaders.
+/// The key enums for the internal shaders.
 #[derive(PartialEq, Eq, Hash)]
 #[allow(non_camel_case_types)]
 pub enum InternalShaders {

@@ -19,6 +19,7 @@ const NUM_INDICES: u32 = 6;
 /// Renders and handles events for objects implementing [`Program`].
 /// As all elements share a common data struct, a function must also be provided
 /// which will send messages to the state and read data from the state into the common struct.
+/// TODO: deal with the fact that iced doesnt wanna reuse a render pass. maybe have a separate ui pass?
 #[allow(dead_code)]
 pub struct IcedElement<D, T: Program<Renderer = Renderer> + 'static, F: FnMut(&mut program::State<T>, &mut D)> {
     state: program::State<T>,
