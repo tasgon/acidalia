@@ -16,4 +16,4 @@ proc_macro = true
 uuid = { version = "0.8", features = ["v4"] }
 syn = "1.0"
 quote = "1.0"
-acidalia_core = { path = "../acidalia_core/" }
+acidalia_core = { path = "../acidalia_core/", version = "0.1" }
