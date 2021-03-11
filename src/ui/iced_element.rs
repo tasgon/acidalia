@@ -5,7 +5,7 @@ use iced_wgpu::{
     wgpu::{self, util::DeviceExt},
     Backend, Renderer, Settings, Viewport,
 };
-use iced_winit::{Debug, Program, Size, conversion, futures, image::Data, program, winit::{
+use iced_winit::{Clipboard, Debug, Program, Size, conversion, futures, image::Data, program, winit::{
         self,
         dpi::PhysicalPosition,
         event::{Event, ModifiersState, WindowEvent},
@@ -27,6 +27,7 @@ pub struct IcedElement<D, T: Program<Renderer = Renderer> + 'static, F: FnMut(&m
     _phantom: PhantomData<D>,
     viewport: Viewport,
     renderer: Renderer,
+    clipboard: Clipboard,
     debug: Debug,
     cursor_position: PhysicalPosition<f64>,
     modifiers: ModifiersState,
@@ -53,6 +54,7 @@ impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D
             engine.window.scale_factor(),
         );
         let mut renderer = Renderer::new(Backend::new(&mut gs.device, Settings::default()));
+        let mut clipboard = Clipboard::connect(&engine.window);
         let cursor_position = PhysicalPosition::new(-1.0, -1.0);
         let modifiers = ModifiersState::default();
         let state = program::State::new(
@@ -147,7 +149,7 @@ impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D
                 vertex: wgpu::VertexState {
                     module: engine
                         .shader_state
-                        .get(&InternalShaders::ICED_VERT)
+                        .get(InternalShaders::IcedVert)
                         .unwrap(),
                     entry_point: "main",
                     buffers: &[],
@@ -155,7 +157,7 @@ impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D
                 fragment: Some(wgpu::FragmentState {
                     module: engine
                         .shader_state
-                        .get(&InternalShaders::ICED_FRAG)
+                        .get(InternalShaders::IcedFrag)
                         .unwrap(),
                     entry_point: "main",
                     targets: &[wgpu::ColorTargetState {
@@ -186,6 +188,7 @@ impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D
             _phantom: PhantomData::default(),
             viewport,
             renderer,
+            clipboard,
             debug,
             cursor_position,
             modifiers,
@@ -272,8 +275,8 @@ impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D
                             self.cursor_position,
                             self.viewport.scale_factor(),
                         ),
-                        None,
                         &mut self.renderer,
+                        &mut self.clipboard,
                         &mut self.debug,
                     );
 

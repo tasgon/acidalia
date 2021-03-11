@@ -1,0 +1,13 @@
+[package]
+name = "acidalia_core"
+version = "0.1.0"
+authors = ["tasgon <tasgon_@outlook.com>"]
+edition = "2018"
+description = "Provides core functionality to the acidalia ecosystem"
+license = "MPL-2.0"
+repository = "https://github.com/tasgon/acidalia"
+keywords = ["acidalia"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]

@@ -1,18 +1,20 @@
 use crate::wgpu;
+use acidalia_core::Nametag;
 use shaderc;
 use std::collections::HashMap;
 use std::path::Path;
+use acidalia_proc_macros::Nametag;
 
 use crate::graphics::GraphicsState;
 
 /// A struct that provides shader compilation and access from the program.
 /// Utilizes `shaderc` to compile GLSL source into SPIR-V.
-pub struct ShaderState<T> {
+pub struct ShaderState {
     compiler: shaderc::Compiler,
-    shader_map: HashMap<T, wgpu::ShaderModule>,
+    shader_map: HashMap<u128, wgpu::ShaderModule>,
 }
 
-impl<T: Eq + std::hash::Hash> ShaderState<T> {
+impl ShaderState {
     /// Construct a new `ShaderState`
     pub fn new() -> Self {
         let compiler = shaderc::Compiler::new().unwrap();
@@ -27,7 +29,7 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
     /// will have hot-reloading.
     pub fn load_src(
         &mut self,
-        key: T,
+        key: impl Nametag,
         path: impl AsRef<Path>,
         entry_point: &str,
         kind: shaderc::ShaderKind,
@@ -52,13 +54,13 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
             flags: wgpu::ShaderFlags::default(),
         };
         self.shader_map
-            .insert(key, gs.device.create_shader_module(&desc));
+            .insert(key.tag(), gs.device.create_shader_module(&desc));
     }
 
     /// Loads a shader from an `&str` source string.
     pub fn load_str(
         &mut self,
-        key: T,
+        key: impl Nametag,
         filename: &str,
         src: &str,
         entry_point: &str,
@@ -76,34 +78,17 @@ impl<T: Eq + std::hash::Hash> ShaderState<T> {
             flags: wgpu::ShaderFlags::default(),
         };
         self.shader_map
-            .insert(key, gs.device.create_shader_module(&desc));
+            .insert(key.tag(), gs.device.create_shader_module(&desc));
     }
 
-    pub fn get(&self, key: &T) -> Option<&wgpu::ShaderModule> {
-        Some(self.shader_map.get(key)?)
+    /// Attempt to retrieve a shader with a given tag `key`.
+    pub fn get(&self, key: impl Nametag) -> Option<&wgpu::ShaderModule> {
+        Some(self.shader_map.get(&key.tag())?)
     }
-}
 
-trait AsShaderSrc {
-    fn get_src(&mut self) -> String;
-}
-
-/// The key enums for the internal shaders.
-#[derive(PartialEq, Eq, Hash)]
-#[allow(non_camel_case_types)]
-pub enum InternalShaders {
-    ICED_VERT,
-    ICED_FRAG,
-}
-
-/// The internal shader state.
-pub type InternalShaderState = ShaderState<InternalShaders>;
-
-impl InternalShaderState {
-    /// Initializes the internal shaders.
     pub(crate) fn init_shaders(&mut self, gs: &mut GraphicsState) {
         self.load_str(
-            InternalShaders::ICED_VERT,
+            InternalShaders::IcedVert,
             "iced.vert",
             include_str!("gl/iced.vert"),
             "main",
@@ -112,7 +97,7 @@ impl InternalShaderState {
             gs,
         );
         self.load_str(
-            InternalShaders::ICED_FRAG,
+            InternalShaders::IcedFrag,
             "iced.frag",
             include_str!("gl/iced.frag"),
             "main",
@@ -121,4 +106,11 @@ impl InternalShaderState {
             gs,
         );
     }
+}
+
+/// The key enums for the internal shaders.
+#[derive(Nametag)]
+pub enum InternalShaders {
+    IcedVert,
+    IcedFrag,
 }

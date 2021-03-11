@@ -1,11 +1,11 @@
-use crate::wgpu;
+use crate::{shaders::ShaderState, wgpu};
 use crate::winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::{Window},
 };
 
-use crate::{EngineBuilder, graphics::GraphicsState, shaders::InternalShaderState};
+use crate::{EngineBuilder, graphics::GraphicsState};
 
 
 /// The core engine that constructs the window and graphics states, and passes events
@@ -14,7 +14,7 @@ pub struct Engine {
     event_loop: Option<EventLoop<()>>,
     pub window: Window,
     pub graphics_state: GraphicsState,
-    pub(crate) shader_state: InternalShaderState,
+    pub shader_state: ShaderState,
     pub background_color: wgpu::Color,
 }
 
@@ -25,7 +25,7 @@ impl Engine {
         let event_loop = EventLoop::new();
         let window = eb.wb.build(&event_loop).unwrap();
         let mut graphics_state = GraphicsState::new(&window);
-        let mut shader_state = InternalShaderState::new();
+        let mut shader_state = ShaderState::new();
         shader_state.init_shaders(&mut graphics_state);
         Self {
             event_loop: Some(event_loop),
@@ -126,7 +126,7 @@ pub trait Element {
 
 /// A list of `Elements` that will all update and draw on the screen.
 /// The draw order is the element order.
-type Screen<T> = Vec<Box<dyn Element<Data = T>>>;
+pub type Screen<T> = Vec<Box<dyn Element<Data = T>>>;
 
 /// Convenience macro to construct a `Screen` from a list of objects
 /// that implement the `Element` trait.

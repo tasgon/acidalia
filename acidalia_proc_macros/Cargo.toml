@@ -1,0 +1,19 @@
+[package]
+name = "acidalia_proc_macros"
+version = "0.1.0"
+authors = ["tasgon <tasgon_@outlook.com>"]
+edition = "2018"
+description = "Provides procedural macros for convenient use with acidalia"
+license = "MPL-2.0"
+repository = "https://github.com/tasgon/acidalia"
+keywords = ["acidalia"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+proc_macro = true
+
+[dependencies]
+uuid = { version = "0.8", features = ["v4"] }
+syn = "1.0"
+quote = "1.0"
+acidalia_core = { path = "../acidalia_core/" }

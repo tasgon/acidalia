@@ -1,6 +1,6 @@
 [package]
 name = "acidalia"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["tasgon <tasgon_@outlook.com>"]
 edition = "2018"
 description = "The game's game engine's engine"
@@ -9,6 +9,9 @@ keywords = ["gamedev", "graphics", "game", "engine", "minimal"]
 homepage = "https://github.com/tasgon/acidalia"
 repository = "https://github.com/tasgon/acidalia"
 documentation = "https://docs.rs/acidalia"
+
+[workspace]
+members = ["acidalia_core", "acidalia_proc_macros"]
 
 [features]
 default = []
@@ -21,6 +24,12 @@ wgpu = "0.7"
 winit = "0.24"
 derive_more = "0.99"
 bytemuck = "1.5"
+acidalia_proc_macros = { path = "./acidalia_proc_macros/", version = "0.1" }
+acidalia_core = { path = "./acidalia_core", version = "0.1" }
+
+crossbeam-channel = "0.4.0"
+notify = "5.0.0-pre.6"
+dashmap = "4.0"
 
 iced_wgpu = { git = "https://github.com/hecrj/iced", version = "0.3", optional = true }
 iced_winit = { git = "https://github.com/hecrj/iced", version = "0.2", optional = true }
