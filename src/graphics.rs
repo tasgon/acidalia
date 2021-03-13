@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 //use futures::executor::block_on;
 use crate::wgpu::{self, BackendBit};
 use crate::winit;
@@ -10,7 +12,7 @@ pub struct GraphicsState {
     pub instance: wgpu::Instance,
     pub surface: wgpu::Surface,
     pub adapter: wgpu::Adapter,
-    pub device: wgpu::Device,
+    pub device: Arc<wgpu::Device>,
     pub queue: wgpu::Queue,
     pub swapchain_descriptor: wgpu::SwapChainDescriptor,
     pub swapchain: wgpu::SwapChain,
@@ -38,6 +40,7 @@ impl GraphicsState {
                 .await
                 .unwrap()
         });
+        let device = Arc::new(device);
 
         let swapchain_descriptor = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,

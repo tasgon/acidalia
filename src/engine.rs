@@ -23,9 +23,9 @@ impl Engine {
     pub fn new(eb: EngineBuilder) -> Self {
         let event_loop = EventLoop::new();
         let window = eb.wb.build(&event_loop).unwrap();
-        let mut graphics_state = GraphicsState::new(&window);
-        let mut shader_state = ShaderState::new();
-        shader_state.init_shaders(&mut graphics_state);
+        let graphics_state = GraphicsState::new(&window);
+        let mut shader_state = ShaderState::new(&graphics_state);
+        shader_state.init_shaders();
         Self {
             event_loop: Some(event_loop),
             window,
