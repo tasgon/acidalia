@@ -1,12 +1,11 @@
-use crate::{shaders::ShaderState, wgpu};
 use crate::winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
-    window::{Window},
+    window::Window,
 };
+use crate::{shaders::ShaderState, wgpu};
 
-use crate::{EngineBuilder, graphics::GraphicsState};
-
+use crate::{graphics::GraphicsState, EngineBuilder};
 
 /// The core engine that constructs the window and graphics states, and passes events
 /// to user-defined screens.

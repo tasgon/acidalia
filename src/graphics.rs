@@ -1,7 +1,7 @@
 //use futures::executor::block_on;
 use crate::wgpu::{self, BackendBit};
-use futures;
 use crate::winit;
+use futures;
 
 use futures::executor::block_on;
 

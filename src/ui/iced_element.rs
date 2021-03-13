@@ -5,13 +5,22 @@ use iced_wgpu::{
     wgpu::{self, util::DeviceExt},
     Backend, Renderer, Settings, Viewport,
 };
-use iced_winit::{Clipboard, Debug, Program, Size, conversion, futures, image::Data, program, winit::{
+use iced_winit::{
+    conversion, futures,
+    image::Data,
+    program,
+    winit::{
         self,
         dpi::PhysicalPosition,
         event::{Event, ModifiersState, WindowEvent},
-    }};
+    },
+    Clipboard, Debug, Program, Size,
+};
 
-use crate::{engine::{Element, Engine}, shaders::InternalShaders};
+use crate::{
+    engine::{Element, Engine},
+    shaders::InternalShaders,
+};
 
 const INDICES: &[u16] = &[0, 2, 1, 1, 2, 3];
 const NUM_INDICES: u32 = 6;
@@ -21,7 +30,11 @@ const NUM_INDICES: u32 = 6;
 /// which will send messages to the state and read data from the state into the common struct.
 /// TODO: deal with the fact that iced doesnt wanna reuse a render pass. maybe have a separate ui pass?
 #[allow(dead_code)]
-pub struct IcedElement<D, T: Program<Renderer = Renderer> + 'static, F: FnMut(&mut program::State<T>, &mut D)> {
+pub struct IcedElement<
+    D,
+    T: Program<Renderer = Renderer, Clipboard = Clipboard> + 'static,
+    F: FnMut(&mut program::State<T>, &mut D),
+> {
     state: program::State<T>,
     func: F,
     _phantom: PhantomData<D>,
@@ -44,7 +57,9 @@ pub struct IcedElement<D, T: Program<Renderer = Renderer> + 'static, F: FnMut(&m
     pipeline: wgpu::RenderPipeline,
 }
 
-impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D)> IcedElement<D, T, F> {
+impl<D, T: Program<Renderer = Renderer, Clipboard = Clipboard>, F: FnMut(&mut program::State<T>, &mut D)>
+    IcedElement<D, T, F>
+{
     /// Construct an `IcedElement` given a program object and a processing function.
     pub fn new(engine: &mut Engine, iced_program: T, func: F) -> Self {
         let gs = &mut engine.graphics_state;
@@ -147,18 +162,12 @@ impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D
                 label: Some("iced pipeline"),
                 layout: Some(&pipeline_layout),
                 vertex: wgpu::VertexState {
-                    module: engine
-                        .shader_state
-                        .get(InternalShaders::IcedVert)
-                        .unwrap(),
+                    module: &engine.shader_state.get(InternalShaders::IcedVert).unwrap(),
                     entry_point: "main",
                     buffers: &[],
                 },
                 fragment: Some(wgpu::FragmentState {
-                    module: engine
-                        .shader_state
-                        .get(InternalShaders::IcedFrag)
-                        .unwrap(),
+                    module: &engine.shader_state.get(InternalShaders::IcedFrag).unwrap(),
                     entry_point: "main",
                     targets: &[wgpu::ColorTargetState {
                         format: gs.swapchain_descriptor.format,
@@ -181,6 +190,8 @@ impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D
                     alpha_to_coverage_enabled: false,
                 },
             });
+        
+        //engine.shader_state.pipeline(gs, f, tags)
 
         Self {
             state,
@@ -205,10 +216,17 @@ impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D
     }
 }
 
-impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D)> Element for IcedElement<D, T, F> {
+impl<D, T: Program<Renderer = Renderer, Clipboard = Clipboard>, F: FnMut(&mut program::State<T>, &mut D)> Element
+    for IcedElement<D, T, F>
+{
     type Data = D;
 
-    fn update(&mut self, engine: &mut Engine, data: &mut Self::Data, event: &winit::event::Event<()>) {
+    fn update(
+        &mut self,
+        engine: &mut Engine,
+        data: &mut Self::Data,
+        event: &winit::event::Event<()>,
+    ) {
         match event {
             Event::WindowEvent { event: wev, .. } => {
                 match wev {

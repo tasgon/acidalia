@@ -1,5 +1,5 @@
-use __core::marker::PhantomData;
 use crate::wgpu;
+use __core::marker::PhantomData;
 pub use imgui::{self, *};
 
 use crate::engine::{Element, Engine};
@@ -62,7 +62,12 @@ impl<T, F: Fn(&Ui, &mut T)> ImguiElement<T, F> {
 impl<T, F: Fn(&Ui, &mut T)> Element for ImguiElement<T, F> {
     type Data = T;
 
-    fn update(&mut self, engine: &mut Engine, _data: &mut Self::Data, event: &crate::winit::event::Event<()>) {
+    fn update(
+        &mut self,
+        engine: &mut Engine,
+        _data: &mut Self::Data,
+        event: &crate::winit::event::Event<()>,
+    ) {
         self.platform
             .handle_event(self.gui.io_mut(), &engine.window, event);
     }

@@ -2,7 +2,6 @@ use crate::winit::window::WindowBuilder;
 
 use crate::Engine;
 
-
 /// The tool that builds your engine for you.
 #[derive(Default)]
 pub struct EngineBuilder {
@@ -12,7 +11,7 @@ pub struct EngineBuilder {
 
 impl EngineBuilder {
     /// Construct a new `EngineBuilder`, providing a function describing the window appearance.
-    /// Refer to 
+    /// Refer to
     pub fn new(mut window_fn: impl (FnMut(WindowBuilder) -> WindowBuilder)) -> Self {
         Self {
             wb: window_fn(WindowBuilder::new()),

@@ -1,4 +1,4 @@
-use proc_macro::{TokenStream};
+use proc_macro::TokenStream;
 use quote::quote;
 use syn::{self, DeriveInput, Ident};
 use uuid::Uuid;
@@ -27,7 +27,7 @@ pub fn nametag_derive(input: TokenStream) -> TokenStream {
             }
         };
 
-        return out.into()
+        return out.into();
     }
 
     return TokenStream::new();
