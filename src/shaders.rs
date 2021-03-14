@@ -3,9 +3,11 @@ use acidalia_core::Nametag;
 use acidalia_proc_macros::Nametag;
 use crossbeam_channel::Sender;
 use dashmap::DashMap;
-use notify::{EventKind, RecommendedWatcher, Watcher, event::{AccessKind, AccessMode}};
+use notify::{
+    event::{AccessKind, AccessMode},
+    EventKind, RecommendedWatcher, Watcher,
+};
 use shaderc;
-use std::path::PathBuf;
 use std::{
     collections::hash_map::RandomState,
     ops::Deref,
@@ -13,6 +15,7 @@ use std::{
     sync::{Arc, RwLock, Weak},
     thread::JoinHandle,
 };
+use std::path::PathBuf;
 use wgpu::{ShaderModule, ShaderModuleDescriptor};
 
 use crate::graphics::GraphicsState;
@@ -53,11 +56,11 @@ impl ShaderSourceDescriptor {
         match self.filename.as_ref() {
             Some(f) => f.clone(),
             None => (&self.path.as_ref())
-            .unwrap()
-            .file_name()
-            .map(|f| f.to_str().expect("Invalid file name"))
-            .unwrap()
-            .to_owned(),
+                .unwrap()
+                .file_name()
+                .map(|f| f.to_str().expect("Invalid file name"))
+                .unwrap()
+                .to_owned(),
         }
     }
 }
@@ -89,6 +92,8 @@ impl<'a> From<SMapRef<'a>> for ShaderRef<'a> {
 enum CompilerMessage {
     FromFile(u128, ShaderSourceDescriptor),
     FromString(u128, ShaderSourceDescriptor),
+    CullRefs,
+    Interrupt,
 }
 
 type ShaderMap = DashMap<u128, (Option<ShaderSourceDescriptor>, ShaderModule)>;
@@ -98,10 +103,9 @@ fn get_shader_ref(map: &ShaderMap, key: impl Nametag) -> Option<ShaderRef> {
 }
 
 fn create_render_set(map: &ShaderMap, tags: RenderTags) -> RenderSet {
-    let vertex = get_shader_ref(map, tags.vertex)
-        .expect("No shader registered with vertex tag");
-    let fragment = get_shader_ref(map, tags.fragment)
-        .expect("No shader registered with fragment tag");
+    let vertex = get_shader_ref(map, tags.vertex).expect("No shader registered with vertex tag");
+    let fragment =
+        get_shader_ref(map, tags.fragment).expect("No shader registered with fragment tag");
     RenderSet { vertex, fragment }
 }
 
@@ -130,14 +134,23 @@ impl ShaderState {
             Watcher::new_immediate(move |ev: Result<notify::Event, notify::Error>| match ev {
                 Ok(event) => {
                     println!("{:?}", event);
-                    if event.kind != EventKind::Access(AccessKind::Close(AccessMode::Write)) { return; } 
+                    if event.kind != EventKind::Access(AccessKind::Close(AccessMode::Write)) {
+                        return;
+                    }
                     for mut entry in sm.iter_mut() {
                         let key = *entry.key();
                         if let Some(src_desc) = &entry.value_mut().0 {
                             if let Some(path) = &src_desc.path {
                                 let path = std::fs::canonicalize(path).unwrap();
-                                if event.paths.iter().map(|f| std::fs::canonicalize(f).unwrap()).collect::<Vec<_>>().contains(&path) {
-                                    tx2.send(CompilerMessage::FromFile(key, src_desc.clone())).unwrap();
+                                if event
+                                    .paths
+                                    .iter()
+                                    .map(|f| std::fs::canonicalize(f).unwrap())
+                                    .collect::<Vec<_>>()
+                                    .contains(&path)
+                                {
+                                    tx2.send(CompilerMessage::FromFile(key, src_desc.clone()))
+                                        .unwrap();
                                 }
                             }
                         }
@@ -150,6 +163,7 @@ impl ShaderState {
         let device = Arc::clone(&gs.device);
         let _handle = std::thread::spawn(move || {
             let mut compiler = shaderc::Compiler::new().unwrap();
+            let mut garbage: Vec<wgpu::RenderPipeline> = vec![];
             'yeet: loop {
                 let val = rx.recv();
                 match val {
@@ -162,32 +176,37 @@ impl ShaderState {
                             CompilerMessage::FromFile(key_, src_desc) => {
                                 key = key_;
                                 filename = src_desc.filename();
-                                let data = std::fs::read_to_string(&src_desc.path.as_ref().unwrap())
-                                    .expect(&format!("Unable to read from {}!", filename));
-                                res = compiler
-                                    .compile_into_spirv(
-                                        &data,
-                                        src_desc.kind,
-                                        &src_desc.filename(),
-                                        &src_desc.entry_point,
-                                        None,
-                                    );
+                                let data =
+                                    std::fs::read_to_string(&src_desc.path.as_ref().unwrap())
+                                        .expect(&format!("Unable to read from {}!", filename));
+                                res = compiler.compile_into_spirv(
+                                    &data,
+                                    src_desc.kind,
+                                    &src_desc.filename(),
+                                    &src_desc.entry_point,
+                                    None,
+                                );
                                 source_descriptor = Some(src_desc);
                             }
                             CompilerMessage::FromString(key_, src_desc) => {
                                 key = key_;
                                 filename = src_desc.filename();
-                                res = compiler
-                                    .compile_into_spirv(
-                                        &src_desc.data.as_ref().unwrap(),
-                                        src_desc.kind,
-                                        &src_desc.filename(),
-                                        &src_desc.entry_point,
-                                        None,
-                                    );
+                                res = compiler.compile_into_spirv(
+                                    &src_desc.data.as_ref().unwrap(),
+                                    src_desc.kind,
+                                    &src_desc.filename(),
+                                    &src_desc.entry_point,
+                                    None,
+                                );
                                 source_descriptor = None;
                             }
-
+                            CompilerMessage::CullRefs => {
+                                garbage.clear();
+                                continue 'yeet;
+                            }
+                            CompilerMessage::Interrupt => {
+                                break 'yeet;
+                            }
                         }
                         match res {
                             Ok(res) => {
@@ -196,7 +215,10 @@ impl ShaderState {
                                     source: wgpu::ShaderSource::SpirV(res.as_binary().into()),
                                     flags: wgpu::ShaderFlags::default(),
                                 };
-                                sm.insert(key, (source_descriptor, device.create_shader_module(&desc)));
+                                sm.insert(
+                                    key,
+                                    (source_descriptor, device.create_shader_module(&desc)),
+                                );
                                 println!("Compiled {}", filename);
                             }
                             Err(e) => {
@@ -209,15 +231,26 @@ impl ShaderState {
                         for data in mfs.iter() {
                             if data.tags.has_tag(key) {
                                 let render_set = create_render_set(&sm, data.tags);
-                                let new_pipeline = (data.manufacturer)(&device, render_set);
+                                let mut new_pipeline = (data.manufacturer)(&device, render_set);
 
-                                if let Some(pipe_ref) = data.pipeline.upgrade() {
-                                    unsafe { *(Arc::<wgpu::RenderPipeline>::as_ptr(&pipe_ref) as *mut wgpu::RenderPipeline) = new_pipeline; }
+                                if let Some(pipe_ref) = data.pipeline.clone().upgrade() {
+                                    //println!("unsafe reached");
+                                    unsafe {
+                                        std::ptr::swap(
+                                            Arc::<wgpu::RenderPipeline>::as_ptr(&pipe_ref)
+                                                as *mut wgpu::RenderPipeline,
+                                            &mut new_pipeline as *mut wgpu::RenderPipeline,
+                                        );
+                                    }
+                                    garbage.push(new_pipeline);
                                 }
                             }
                         }
-                    },
-                    Err(_) => { break 'yeet; }
+                    }
+                    Err(_) => {
+                        eprintln!("Crossbeam connection error!");
+                        break 'yeet;
+                    }
                 }
             }
         });
@@ -290,7 +323,7 @@ impl ShaderState {
         self.tx
             .send(CompilerMessage::FromString(tag, src_desc))
             .unwrap();
-        
+
         while !self.shader_map.contains_key(&tag) {
             continue;
         }
@@ -302,37 +335,37 @@ impl ShaderState {
     }
 
     pub(crate) fn init_shaders(&mut self) {
-        self.load_src(
-            InternalShaders::IcedVert,
-            "iced.vert",
-            include_str!("gl/iced.vert"),
-            "main",
-            shaderc::ShaderKind::Vertex,
-            None,
-        );
-        self.load_src(
-            InternalShaders::IcedFrag,
-            "iced.frag",
-            include_str!("gl/iced.frag"),
-            "main",
-            shaderc::ShaderKind::Fragment,
-            None,
-        );
-
-        // self.load_file(
+        // self.load_src(
         //     InternalShaders::IcedVert,
-        //     "../acidalia/src/gl/iced.vert",
+        //     "iced.vert",
+        //     include_str!("gl/iced.vert"),
         //     "main",
         //     shaderc::ShaderKind::Vertex,
         //     None,
         // );
-        // self.load_file(
+        // self.load_src(
         //     InternalShaders::IcedFrag,
-        //     "../acidalia/src/gl/iced.frag",
+        //     "iced.frag",
+        //     include_str!("gl/iced.frag"),
         //     "main",
         //     shaderc::ShaderKind::Fragment,
         //     None,
         // );
+
+        self.load_file(
+            InternalShaders::IcedVert,
+            "../acidalia/src/gl/iced.vert",
+            "main",
+            shaderc::ShaderKind::Vertex,
+            None,
+        );
+        self.load_file(
+            InternalShaders::IcedFrag,
+            "../acidalia/src/gl/iced.frag",
+            "main",
+            shaderc::ShaderKind::Fragment,
+            None,
+        );
     }
 
     fn create_render_set(&self, tags: RenderTags) -> RenderSet {
@@ -356,6 +389,16 @@ impl ShaderState {
         let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret));
         self.manufacturers.write().unwrap().push(val);
         ret
+    }
+
+    #[inline(always)]
+    pub(crate) fn cull(&mut self) {
+        self.tx.send(CompilerMessage::CullRefs).unwrap();
+    }
+
+    #[inline(always)]
+    pub(crate) fn interrupt(&mut self) {
+        self.tx.send(CompilerMessage::Interrupt).unwrap();
     }
 }
 

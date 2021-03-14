@@ -17,7 +17,10 @@ use iced_winit::{
     Clipboard, Debug, Program, Size,
 };
 
-use crate::{engine::{Element, Engine}, shaders::{InternalShaders, RenderTags}};
+use crate::{
+    engine::{Element, Engine},
+    shaders::{InternalShaders, RenderTags},
+};
 
 const INDICES: &[u16] = &[0, 2, 1, 1, 2, 3];
 const NUM_INDICES: u32 = 6;
@@ -191,41 +194,44 @@ impl<
         //         },
         //     });
         let format = gs.swapchain_descriptor.format;
-        let pipeline = engine.shader_state.pipeline(gs, move |dev, shaders| {
-            dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("iced pipeline"),
-                layout: Some(&pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shaders.vertex,
-                    entry_point: "main",
-                    buffers: &[],
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &shaders.fragment,
-                    entry_point: "main",
-                    targets: &[wgpu::ColorTargetState {
-                        format,
-                        alpha_blend: wgpu::BlendState::REPLACE,
-                        color_blend: wgpu::BlendState::REPLACE,
-                        write_mask: wgpu::ColorWrite::ALL,
-                    }],
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: wgpu::CullMode::Back,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                },
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-            })
-        }, RenderTags::new(InternalShaders::IcedVert, InternalShaders::IcedFrag));
-            
+        let pipeline = engine.shader_state.pipeline(
+            gs,
+            move |dev, shaders| {
+                dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("iced pipeline"),
+                    layout: Some(&pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &shaders.vertex,
+                        entry_point: "main",
+                        buffers: &[],
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &shaders.fragment,
+                        entry_point: "main",
+                        targets: &[wgpu::ColorTargetState {
+                            format,
+                            alpha_blend: wgpu::BlendState::REPLACE,
+                            color_blend: wgpu::BlendState::REPLACE,
+                            write_mask: wgpu::ColorWrite::ALL,
+                        }],
+                    }),
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        strip_index_format: None,
+                        front_face: wgpu::FrontFace::Ccw,
+                        cull_mode: wgpu::CullMode::Back,
+                        polygon_mode: wgpu::PolygonMode::Fill,
+                    },
+                    depth_stencil: None,
+                    multisample: wgpu::MultisampleState {
+                        count: 1,
+                        mask: !0,
+                        alpha_to_coverage_enabled: false,
+                    },
+                })
+            },
+            RenderTags::new(InternalShaders::IcedVert, InternalShaders::IcedFrag),
+        );
 
         //engine.shader_state.pipeline(gs, f, tags)
 

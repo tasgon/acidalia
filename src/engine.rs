@@ -47,7 +47,9 @@ impl Engine {
                     Event::WindowEvent {
                         event: WindowEvent::CloseRequested,
                         ..
-                    } => *control_flow = ControlFlow::Exit,
+                    } => {
+                        *control_flow = ControlFlow::Exit
+                    }
                     Event::WindowEvent {
                         event: WindowEvent::Resized(_),
                         ..
@@ -89,6 +91,8 @@ impl Engine {
                         std::mem::drop(render_pass);
 
                         self.graphics_state.queue.submit(Some(encoder.finish()));
+
+                        self.shader_state.cull();
                     }
                     _ => (),
                 }
