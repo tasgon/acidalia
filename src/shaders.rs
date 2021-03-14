@@ -8,6 +8,7 @@ use notify::{
     EventKind, RecommendedWatcher, Watcher,
 };
 use shaderc;
+use std::path::PathBuf;
 use std::{
     collections::hash_map::RandomState,
     ops::Deref,
@@ -15,24 +16,23 @@ use std::{
     sync::{Arc, RwLock, Weak},
     thread::JoinHandle,
 };
-use std::path::PathBuf;
-use wgpu::{ShaderModule, ShaderModuleDescriptor};
+use wgpu::{RenderPipeline, ShaderModule, ShaderModuleDescriptor};
 
 use crate::graphics::GraphicsState;
 
-type Manufacturer = Box<dyn Fn(&wgpu::Device, RenderSet) -> wgpu::RenderPipeline + Send + Sync>;
+type Manufacturer = Box<dyn Fn(&wgpu::Device, RenderSet) -> RenderPipeline + Send + Sync>;
 
 struct ManufacturingData {
     manufacturer: Manufacturer,
     tags: RenderTags,
-    pipeline: Weak<wgpu::RenderPipeline>,
+    pipeline: Weak<RenderPipeline>,
 }
 
 impl ManufacturingData {
-    pub fn new(
+    fn new(
         manufacturer: Manufacturer,
         tags: RenderTags,
-        pipeline: Weak<wgpu::RenderPipeline>,
+        pipeline: Weak<RenderPipeline>,
     ) -> Self {
         Self {
             manufacturer,
@@ -163,7 +163,7 @@ impl ShaderState {
         let device = Arc::clone(&gs.device);
         let _handle = std::thread::spawn(move || {
             let mut compiler = shaderc::Compiler::new().unwrap();
-            let mut garbage: Vec<wgpu::RenderPipeline> = vec![];
+            let mut garbage: Vec<RenderPipeline> = vec![];
             'yeet: loop {
                 let val = rx.recv();
                 match val {
@@ -234,12 +234,13 @@ impl ShaderState {
                                 let mut new_pipeline = (data.manufacturer)(&device, render_set);
 
                                 if let Some(pipe_ref) = data.pipeline.clone().upgrade() {
-                                    //println!("unsafe reached");
+                                    // TODO: this is probably way too much premature optimization, and I should rethink my
+                                    // design soon. maybe just switch to an ecs or something similar?
                                     unsafe {
                                         std::ptr::swap(
-                                            Arc::<wgpu::RenderPipeline>::as_ptr(&pipe_ref)
-                                                as *mut wgpu::RenderPipeline,
-                                            &mut new_pipeline as *mut wgpu::RenderPipeline,
+                                            Arc::<RenderPipeline>::as_ptr(&pipe_ref)
+                                                as *mut RenderPipeline,
+                                            &mut new_pipeline as *mut RenderPipeline,
                                         );
                                     }
                                     garbage.push(new_pipeline);
@@ -254,8 +255,6 @@ impl ShaderState {
                 }
             }
         });
-
-        //println!("{}", std::env::current_dir().unwrap().to_str().unwrap());
 
         Self {
             shader_map,
@@ -334,40 +333,27 @@ impl ShaderState {
         self.shader_map.get(&key.tag()).map(|i| i.into())
     }
 
+    /// Initialize the internal shaders for the program.
     pub(crate) fn init_shaders(&mut self) {
-        // self.load_src(
-        //     InternalShaders::IcedVert,
-        //     "iced.vert",
-        //     include_str!("gl/iced.vert"),
-        //     "main",
-        //     shaderc::ShaderKind::Vertex,
-        //     None,
-        // );
-        // self.load_src(
-        //     InternalShaders::IcedFrag,
-        //     "iced.frag",
-        //     include_str!("gl/iced.frag"),
-        //     "main",
-        //     shaderc::ShaderKind::Fragment,
-        //     None,
-        // );
-
-        self.load_file(
+        self.load_src(
             InternalShaders::IcedVert,
-            "../acidalia/src/gl/iced.vert",
+            "iced.vert",
+            include_str!("gl/iced.vert"),
             "main",
             shaderc::ShaderKind::Vertex,
             None,
         );
-        self.load_file(
+        self.load_src(
             InternalShaders::IcedFrag,
-            "../acidalia/src/gl/iced.frag",
+            "iced.frag",
+            include_str!("gl/iced.frag"),
             "main",
             shaderc::ShaderKind::Fragment,
             None,
         );
     }
 
+    /// Assemble a set of vertex and fragment [`ShaderModule`]s to be used in the manufactory.
     fn create_render_set(&self, tags: RenderTags) -> RenderSet {
         let vertex = self
             .get(tags.vertex)
@@ -378,12 +364,14 @@ impl ShaderState {
         RenderSet { vertex, fragment }
     }
 
+    /// Create a new pipeline manufacturer with a manufacturing function and a set of tags to use in the pipeline.
+    /// The function is expected to consume a [`RenderSet`] and return a [`RenderPipeline`].
     pub fn pipeline(
         &mut self,
         gs: &GraphicsState,
-        f: impl Fn(&wgpu::Device, RenderSet) -> wgpu::RenderPipeline + Send + Sync + 'static,
+        f: impl Fn(&wgpu::Device, RenderSet) -> RenderPipeline + Send + Sync + 'static,
         tags: RenderTags,
-    ) -> Arc<wgpu::RenderPipeline> {
+    ) -> Arc<RenderPipeline> {
         let manufacturer = Box::new(f) as Manufacturer;
         let ret = Arc::new((manufacturer)(&gs.device, self.create_render_set(tags)));
         let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret));
@@ -391,6 +379,7 @@ impl ShaderState {
         ret
     }
 
+    /// Tell the manufactory to cull all unused render pipelines.
     #[inline(always)]
     pub(crate) fn cull(&mut self) {
         self.tx.send(CompilerMessage::CullRefs).unwrap();

@@ -2,6 +2,7 @@
 mod engine;
 mod engine_builder;
 mod graphics;
+mod fps;
 /// Everything related to managing shaders.
 pub mod shaders;
 /// Everything related to drawing user interfaces.

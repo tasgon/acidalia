@@ -5,7 +5,7 @@ pub use imgui::{self, *};
 use crate::engine::{Element, Engine};
 
 /// Builds and renders an [`imgui::Ui`] constructed from a user-defined function.
-pub struct ImguiElement<T, F: FnMut(&Ui, &mut T)> {
+pub struct ImguiElement<T, F: Fn(&Ui, &Engine, &mut T)> {
     func: F,
     _phantom: PhantomData<T>,
     gui: imgui::Context,
@@ -14,7 +14,7 @@ pub struct ImguiElement<T, F: FnMut(&Ui, &mut T)> {
     last_cursor: Option<Option<imgui::MouseCursor>>,
 }
 
-impl<T, F: Fn(&Ui, &mut T)> ImguiElement<T, F> {
+impl<T, F: Fn(&Ui, &Engine, &mut T)> ImguiElement<T, F> {
     /// Construct a new `ImguiElement` from a function, which will take in a `Ui` struct and modify it
     /// as needed before drawing.
     pub fn new(func: F, engine: &Engine) -> Self {
@@ -59,7 +59,7 @@ impl<T, F: Fn(&Ui, &mut T)> ImguiElement<T, F> {
     }
 }
 
-impl<T, F: Fn(&Ui, &mut T)> Element for ImguiElement<T, F> {
+impl<T, F: Fn(&Ui, &Engine, &mut T)> Element for ImguiElement<T, F> {
     type Data = T;
 
     fn update(
@@ -85,7 +85,7 @@ impl<T, F: Fn(&Ui, &mut T)> Element for ImguiElement<T, F> {
             .expect("Failed to prepare frame");
 
         let ui = self.gui.frame();
-        (self.func)(&ui, data);
+        (self.func)(&ui, engine, data);
 
         if self.last_cursor != Some(ui.mouse_cursor()) {
             self.last_cursor = Some(ui.mouse_cursor());

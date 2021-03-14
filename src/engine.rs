@@ -1,11 +1,12 @@
-use crate::winit::{
+use crate::{fps::FPSCounter, winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::Window,
-};
+}};
 use crate::{shaders::ShaderState, wgpu};
 
 use crate::{graphics::GraphicsState, EngineBuilder};
+use crate::fps::TimingState;
 
 /// The core engine that constructs the window and graphics states, and passes events
 /// to user-defined screens.
@@ -15,6 +16,7 @@ pub struct Engine {
     pub graphics_state: GraphicsState,
     pub shader_state: ShaderState,
     pub background_color: wgpu::Color,
+    pub fps: FPSCounter,
 }
 
 impl Engine {
@@ -32,12 +34,14 @@ impl Engine {
             graphics_state,
             shader_state,
             background_color: eb.bg_color,
+            fps: FPSCounter::new(),
         }
     }
 
     /// Runs the event loop with an initial `Screen`.
     pub fn run<T: 'static>(mut self, screen: Screen<T>, mut data: T) {
         let evloop = self.event_loop.take().unwrap();
+        self.fps.set_elements(screen.len());
         let mut screens: Vec<Screen<T>> = vec![screen];
         evloop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Poll;
@@ -47,9 +51,7 @@ impl Engine {
                     Event::WindowEvent {
                         event: WindowEvent::CloseRequested,
                         ..
-                    } => {
-                        *control_flow = ControlFlow::Exit
-                    }
+                    } => *control_flow = ControlFlow::Exit,
                     Event::WindowEvent {
                         event: WindowEvent::Resized(_),
                         ..
@@ -84,9 +86,11 @@ impl Engine {
                                 }],
                                 depth_stencil_attachment: None,
                             });
-
+                        
+                        self.fps.start(TimingState::Draw);
                         for element in screen.iter_mut() {
                             element.render(&mut self, &mut data, &frame, &mut render_pass);
+                            self.fps.advance();
                         }
                         std::mem::drop(render_pass);
 
@@ -96,9 +100,11 @@ impl Engine {
                     }
                     _ => (),
                 }
+                self.fps.start(TimingState::Update);
                 for element in screen.iter_mut().rev() {
                     // TODO: allow event cancelling
-                    element.update(&mut self, &mut data, &event)
+                    element.update(&mut self, &mut data, &event);
+                    self.fps.advance();
                 }
             } else {
                 *control_flow = ControlFlow::Exit;

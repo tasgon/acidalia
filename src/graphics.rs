@@ -47,7 +47,7 @@ impl GraphicsState {
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::Mailbox,
+            present_mode: wgpu::PresentMode::Immediate,
         };
         let swapchain = device.create_swap_chain(&surface, &swapchain_descriptor);
 

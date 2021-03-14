@@ -1,39 +1,107 @@
 use std::time::{Instant, Duration};
 
-pub struct FPSCounterConfig {
-    pub seconds_per_print: Duration,
+pub enum TimingState {
+    Draw,
+    Update,
 }
 
-
 pub struct FPSCounter {
-    ticks: u32,
-    last_print: Instant,
-    config: FPSCounterConfig,
+    draw_ticks: usize,
+    update_ticks: usize,
+    index: usize,
+    num_elements: usize,
+    timing_state: TimingState,
+    last_time: Instant,
+    start_time: Instant,
+
+    update_time: Box<[f32]>,
+    draw_time: Box<[f32]>,
 }
 
 impl FPSCounter {
-    pub fn new(config: FPSCounterConfig) -> Self {
+    pub fn new() -> Self {
         Self {
-            ticks: 0,
-            last_print: Instant::now(),
-            config,
+            draw_ticks: 0,
+            update_ticks: 0,
+            index: 0,
+            num_elements: 0,
+            timing_state: TimingState::Update,
+            last_time: Instant::now(),
+            start_time: Instant::now(),
+            update_time: Vec::with_capacity(1).into_boxed_slice(),
+            draw_time: Vec::with_capacity(1).into_boxed_slice(),
+        }
+    }
+
+    pub(crate) fn set_elements(&mut self, num_elements: usize) {
+        self.num_elements = num_elements;
+        self.update_time = vec![0f32; num_elements].into_boxed_slice();
+        self.draw_time = vec![0f32; num_elements].into_boxed_slice();
+        self.draw_ticks = 0;
+        self.update_ticks = 0;
+        self.start_time = Instant::now();
+    }
+
+    #[inline(always)]
+    fn get(&mut self) -> &mut Box<[f32]> {
+        match self.timing_state {
+            TimingState::Draw => &mut self.draw_time,
+            TimingState::Update => &mut self.update_time,
         }
     }
 
     #[inline(always)]
-    pub fn tick(&mut self) {
-        self.ticks += 1;
+    fn tick(&mut self) {
+        match self.timing_state {
+            TimingState::Draw => self.draw_ticks += 1,
+            TimingState::Update => self.update_ticks += 1,
+        }
     }
 
     #[inline(always)]
-    pub fn print(&mut self) {
-        let now = Instant::now();
-        let delta = now - self.last_print;
-        if delta > self.config.seconds_per_print {
-            self.last_print = now;
-            println!("FPS: {}", self.ticks as f32 / delta.as_secs_f32());
-            self.ticks = 0
-        }
+    pub(crate) fn start(&mut self, ts: TimingState) {
+        self.index = 0;
+        self.timing_state = ts;
+        self.last_time = Instant::now();
+    }
+
+    #[inline(always)]
+    pub(crate) fn stop(&mut self) {
+        let idx = self.index;
+        self.get()[idx] = (Instant::now() - self.last_time).as_secs_f32();
+    }
+
+    #[inline(always)]
+    pub(crate) fn advance(&mut self) {
+        self.stop();
+        self.index += 1;
+        self.tick();
+        self.last_time = Instant::now();
+    }
+
+    #[inline(always)]
+    pub fn draw_time(&self) -> &Box<[f32]> {
+        &self.draw_time
+    }
+
+    #[inline(always)]
+    pub fn update_time(&self) -> &Box<[f32]> {
+        &self.update_time
+    }
+
+    #[inline(always)]
+    pub fn elements(&self) -> usize {
+        self.num_elements
+    }
+
+    #[inline(always)]
+    pub fn draw_ticks(&self) -> usize {
+        self.draw_ticks
+    }
+
+    #[inline(always)]
+    pub fn running_time(&self) -> Duration {
+        Instant::now() - self.start_time
     }
 }
 
