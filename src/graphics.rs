@@ -24,7 +24,7 @@ impl GraphicsState {
     /// Creates a new `GraphicsState` from a `winit` window.
     pub(crate) fn new(window: &winit::window::Window) -> Self {
         let size = window.inner_size();
-        let instance = wgpu::Instance::new(BackendBit::VULKAN);
+        let instance = wgpu::Instance::new(BackendBit::PRIMARY);
         let surface = unsafe { instance.create_surface(window) };
 
         let adapter_options = wgpu::RequestAdapterOptions {

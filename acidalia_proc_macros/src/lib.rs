@@ -18,7 +18,7 @@ pub fn nametag_derive(input: TokenStream) -> TokenStream {
         }
 
         let out = quote! {
-            impl acidalia_core::Nametag for #ident {
+            impl Nametag for #ident {
                 fn tag(self) -> u128 {
                     match self {
                         #(Self::#idents =>  { #vals }),*

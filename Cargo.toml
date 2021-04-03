@@ -31,8 +31,8 @@ crossbeam-channel = "0.5.0"
 notify = "5.0.0-pre.6"
 dashmap = "4.0"
 
-iced_wgpu = { git = "https://github.com/hecrj/iced", version = "0.3", optional = true }
-iced_winit = { git = "https://github.com/hecrj/iced", version = "0.2", optional = true }
+iced_wgpu = { version = "0.4", optional = true }
+iced_winit = { version = "0.3", optional = true }
 
 imgui-wgpu = "0.14"
 imgui = "0.7"
