@@ -1,8 +1,8 @@
 #[macro_use]
 mod engine;
 mod engine_builder;
-mod graphics;
 mod fps;
+mod graphics;
 /// Everything related to managing shaders.
 pub mod shaders;
 /// Everything related to drawing user interfaces.

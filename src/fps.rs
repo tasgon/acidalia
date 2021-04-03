@@ -1,4 +1,4 @@
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 pub enum TimingState {
     Draw,
@@ -104,4 +104,3 @@ impl FPSCounter {
         Instant::now() - self.start_time
     }
 }
-

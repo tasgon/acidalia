@@ -1,12 +1,15 @@
-use crate::{fps::FPSCounter, winit::{
-    event::*,
-    event_loop::{ControlFlow, EventLoop},
-    window::Window,
-}};
+use crate::{
+    fps::FPSCounter,
+    winit::{
+        event::*,
+        event_loop::{ControlFlow, EventLoop},
+        window::Window,
+    },
+};
 use crate::{shaders::ShaderState, wgpu};
 
-use crate::{graphics::GraphicsState, EngineBuilder};
 use crate::fps::TimingState;
+use crate::{graphics::GraphicsState, EngineBuilder};
 
 /// The core engine that constructs the window and graphics states, and passes events
 /// to user-defined screens.
@@ -86,7 +89,7 @@ impl Engine {
                                 }],
                                 depth_stencil_attachment: None,
                             });
-                        
+
                         self.fps.start(TimingState::Draw);
                         for element in screen.iter_mut() {
                             element.render(&mut self, &mut data, &frame, &mut render_pass);

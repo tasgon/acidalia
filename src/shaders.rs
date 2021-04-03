@@ -29,11 +29,7 @@ struct ManufacturingData {
 }
 
 impl ManufacturingData {
-    fn new(
-        manufacturer: Manufacturer,
-        tags: RenderTags,
-        pipeline: Weak<RenderPipeline>,
-    ) -> Self {
+    fn new(manufacturer: Manufacturer, tags: RenderTags, pipeline: Weak<RenderPipeline>) -> Self {
         Self {
             manufacturer,
             tags,
@@ -133,7 +129,8 @@ impl ShaderState {
         let watcher: RecommendedWatcher =
             Watcher::new_immediate(move |ev: Result<notify::Event, notify::Error>| match ev {
                 Ok(event) => {
-                    println!("{:?}", event);
+                    // TODO: log
+                    // println!("{:?}", event);
                     if event.kind != EventKind::Access(AccessKind::Close(AccessMode::Write)) {
                         return;
                     }
@@ -160,7 +157,10 @@ impl ShaderState {
             })
             .unwrap();
         let sm = Arc::clone(&shader_map);
-        let device = Arc::clone(&gs.device);
+        // TODO: there is a bug right now somewhere in wgpu (I think) that messes up if a device reference
+        // is dropped from another thread after the main window thread has expired. To get around this (for now)
+        // putting it in a `ManuallyDrop` prevents that from happening. This should be removed after the bug is fixed.
+        let device = std::mem::ManuallyDrop::new(Arc::clone(&gs.device));
         let _handle = std::thread::spawn(move || {
             let mut compiler = shaderc::Compiler::new().unwrap();
             let mut garbage: Vec<RenderPipeline> = vec![];
@@ -219,7 +219,8 @@ impl ShaderState {
                                     key,
                                     (source_descriptor, device.create_shader_module(&desc)),
                                 );
-                                println!("Compiled {}", filename);
+                                // TODO: log
+                                // println!("Compiled {}", filename);
                             }
                             Err(e) => {
                                 eprintln!("Failed to recompile '{}': {}", filename, e);
@@ -249,7 +250,6 @@ impl ShaderState {
                         }
                     }
                     Err(_) => {
-                        eprintln!("Crossbeam connection error!");
                         break 'yeet;
                     }
                 }
