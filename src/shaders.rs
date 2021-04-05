@@ -16,7 +16,7 @@ use std::{
     sync::{Arc, RwLock, Weak},
     thread::JoinHandle,
 };
-use wgpu::{ RenderPipeline, ShaderModule, ShaderModuleDescriptor};
+use wgpu::{RenderPipeline, ShaderModule, ShaderModuleDescriptor};
 
 use crate::graphics::GraphicsState;
 
@@ -100,8 +100,9 @@ fn get_shader_ref(map: &ShaderMap, key: impl Nametag) -> Option<ShaderRef> {
 
 fn create_render_set(map: &ShaderMap, tags: RenderTags) -> RenderSet {
     let vertex = get_shader_ref(map, tags.vertex).expect("No shader registered with vertex tag");
-    let fragment = tags.fragment.map(|tag|
-        get_shader_ref(map, tag).expect("No shader registered with fragment tag"));
+    let fragment = tags
+        .fragment
+        .map(|tag| get_shader_ref(map, tag).expect("No shader registered with fragment tag"));
     RenderSet { vertex, fragment }
 }
 
@@ -114,6 +115,7 @@ pub struct ShaderState {
     watcher: RecommendedWatcher,
     _handle: JoinHandle<()>,
     tx: Sender<CompilerMessage>,
+    device: Arc<wgpu::Device>,
 }
 
 impl ShaderState {
@@ -196,7 +198,7 @@ impl ShaderState {
                                     &src_desc.entry_point,
                                     None,
                                 );
-                                source_descriptor = None;
+                                source_descriptor = Some(src_desc);
                             }
                             CompilerMessage::CullRefs => {
                                 garbage.clear();
@@ -260,11 +262,11 @@ impl ShaderState {
             watcher,
             _handle,
             tx,
+            device: Arc::clone(&gs.device),
         }
     }
 
-    /// Loads a shader from a file. In the future, shaders reloaded from here
-    /// will have hot-reloading.
+    /// Loads a shader from a file. Shaders added from here will hot-reload.
     pub fn load_file(
         &mut self,
         key: impl Nametag,
@@ -356,9 +358,10 @@ impl ShaderState {
         let vertex = self
             .get(tags.vertex)
             .expect("No shader registered with vertex tag");
-        let fragment = tags.fragment.map(|tag| self
-            .get(tag)
-            .expect("No shader registered with fragment tag"));
+        let fragment = tags.fragment.map(|tag| {
+            self.get(tag)
+                .expect("No shader registered with fragment tag")
+        });
         RenderSet { vertex, fragment }
     }
 
@@ -377,15 +380,20 @@ impl ShaderState {
         ret
     }
 
+    /// Start constructing a new pipeline using the [`RenderPipelineBuilder`].
+    pub fn render_pipeline_builder<T: Into<String>>(
+        &self,
+        label: impl Into<Option<T>>,
+        layout: wgpu::PipelineLayout,
+        vertex: impl Nametag,
+    ) -> RenderPipelineBuilder {
+        RenderPipelineBuilder::new(self, label.into().map(|i| i.into()), layout, vertex)
+    }
+
     /// Tell the manufactory to cull all unused render pipelines.
     #[inline(always)]
     pub(crate) fn cull(&mut self) {
         self.tx.send(CompilerMessage::CullRefs).unwrap();
-    }
-
-    #[inline(always)]
-    pub(crate) fn interrupt(&mut self) {
-        self.tx.send(CompilerMessage::Interrupt).unwrap();
     }
 }
 
@@ -403,10 +411,10 @@ pub struct RenderTags {
 }
 
 impl RenderTags {
-    pub fn new<T: Nametag>(vertex: impl Nametag, fragment: impl Into<Option<T>>) -> Self {
+    pub fn new<T: Nametag>(vertex: impl Nametag, fragment: Option<T>) -> Self {
         Self {
             vertex: vertex.tag(),
-            fragment: fragment.into().map(|i| i.tag()),
+            fragment: fragment.map(|i| i.tag()),
         }
     }
 }
@@ -422,7 +430,10 @@ pub struct RenderSet<'a> {
     pub fragment: Option<ShaderRef<'a>>,
 }
 
-pub struct RenderPipelineBuilder {
+/// This tells the engine how to build your render pipelines.
+/// Created from [`ShaderState::render_pipeline_builder`].
+pub struct RenderPipelineBuilder<'a> {
+    state: &'a ShaderState,
     label: Option<String>,
     layout: wgpu::PipelineLayout,
     vertex: u128,
@@ -432,14 +443,16 @@ pub struct RenderPipelineBuilder {
     multisample: wgpu::MultisampleState,
 }
 
-impl RenderPipelineBuilder {
-    pub fn new(
-        label: impl Into<Option<String>>,
+impl<'a> RenderPipelineBuilder<'a> {
+    pub(crate) fn new(
+        state: &'a ShaderState,
+        label: Option<String>,
         layout: wgpu::PipelineLayout,
         vertex: impl Nametag,
     ) -> Self {
         Self {
-            label: label.into(),
+            state,
+            label,
             layout,
             vertex: vertex.tag(),
             fragment: None,
@@ -459,27 +472,33 @@ impl RenderPipelineBuilder {
         }
     }
 
-    pub fn fragment(mut self, fragment: impl Nametag, targets: impl ToVec<wgpu::ColorTargetState>) -> Self {
+    /// Set which fragment shader to use, and what [`wgpu::ColorTargetState`]s to target.
+    pub fn fragment(
+        mut self,
+        fragment: impl Nametag,
+        targets: impl ToVec<wgpu::ColorTargetState>,
+    ) -> Self {
         self.fragment = Some((fragment.tag(), targets.to_vec()));
         self
     }
 
+    /// Set the primitive state.
     pub fn primitive(mut self, primitive: wgpu::PrimitiveState) -> Self {
         self.primitive = primitive;
         self
     }
 
-    pub fn depth_stencil(mut self, depth_stencil: impl Into<Option<wgpu::DepthStencilState>>) -> Self {
+    /// Set the depth stencil state
+    pub fn depth_stencil(
+        mut self,
+        depth_stencil: impl Into<Option<wgpu::DepthStencilState>>,
+    ) -> Self {
         self.depth_stencil = depth_stencil.into();
         self
     }
 
-    pub fn multisample(
-        mut self,
-        count: u32,
-        mask: u64,
-        alpha_to_coverage_enabled: bool,
-    ) -> Self {
+    /// Set the [`wgpu::MultisampleState`] to use.
+    pub fn multisample(mut self, count: u32, mask: u64, alpha_to_coverage_enabled: bool) -> Self {
         self.multisample = wgpu::MultisampleState {
             count,
             mask,
@@ -488,35 +507,67 @@ impl RenderPipelineBuilder {
         self
     }
 
-    pub fn build(self) -> impl Fn(&wgpu::Device, RenderSet) -> RenderPipeline + Send + Sync + 'static {
+    /// Add the info to the render pipeline manufactory and immediately give back a [`wgpu::RenderPipeline`].
+    pub fn build(self) -> Arc<RenderPipeline> {
+        let lbl = self.label.clone();
+        let state = self.state;
         let multisample = self.multisample;
+        let primitive = self.primitive;
+        let depth_stencil = self.depth_stencil;
         let layout = self.layout;
-        let fragment = self.fragment.unwrap().1;
-        move |dev, shaders| {
+        let vert_main = state
+            .shader_map
+            .get(&self.vertex)
+            .unwrap()
+            .0
+            .as_ref()
+            .unwrap()
+            .entry_point
+            .clone();
+        let frag_tag = self.fragment.as_ref().map(|i| i.0);
+        let vert_tag = self.vertex;
+        let fragment = self.fragment.map(|i| {
+            (
+                state
+                    .shader_map
+                    .get(&i.0)
+                    .unwrap()
+                    .0
+                    .as_ref()
+                    .unwrap()
+                    .entry_point
+                    .clone(),
+                i.1,
+            )
+        });
+        let tags = RenderTags::new(vert_tag, frag_tag);
+        let manufacturer = Box::new(move |dev: &wgpu::Device, shaders: RenderSet| {
+            let label: Option<&str> = lbl.as_ref().map(|i| i.as_str());
             dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("iced pipeline"),
+                label,
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
                     module: &shaders.vertex,
-                    entry_point: "main",
+                    entry_point: vert_main.as_str(),
                     buffers: &[],
                 },
-                fragment: shaders.fragment.as_ref().map(|frag| wgpu::FragmentState {
-                    module: frag,
-                    entry_point: "main",
-                    targets: fragment.as_slice(),
+                fragment: shaders.fragment.as_ref().map(|frag| {
+                    let (main, targets) = fragment.as_ref().unwrap();
+                    wgpu::FragmentState {
+                        module: frag,
+                        entry_point: main,
+                        targets: targets.as_slice(),
+                    }
                 }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: wgpu::CullMode::Back,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                },
-                depth_stencil: None,
+                primitive: primitive.clone(),
+                depth_stencil: depth_stencil.clone(),
                 multisample: multisample.clone(),
             })
-        }
+        }) as Manufacturer;
+        let ret = Arc::new((manufacturer)(&state.device, state.create_render_set(tags)));
+        let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret));
+        state.manufacturers.write().unwrap().push(val);
+        ret
     }
 }
 

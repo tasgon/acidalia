@@ -137,44 +137,28 @@ impl<
         let pipeline_layout =
             gs.pipeline_layout("iced pipeline layout", &[&bind_group_layout], &[]);
         let format = gs.swapchain_descriptor.format;
-        let pipeline = engine.shader_state.render_pipeline(
-            gs,
-            move |dev, shaders| {
-                dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some("iced pipeline"),
-                    layout: Some(&pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &shaders.vertex,
-                        entry_point: "main",
-                        buffers: &[],
-                    },
-                    fragment: Some(wgpu::FragmentState {
-                        module: &shaders.fragment.unwrap(),
-                        entry_point: "main",
-                        targets: &[wgpu::ColorTargetState {
-                            format,
-                            alpha_blend: wgpu::BlendState::REPLACE,
-                            color_blend: wgpu::BlendState::REPLACE,
-                            write_mask: wgpu::ColorWrite::ALL,
-                        }],
-                    }),
-                    primitive: wgpu::PrimitiveState {
-                        topology: wgpu::PrimitiveTopology::TriangleList,
-                        strip_index_format: None,
-                        front_face: wgpu::FrontFace::Ccw,
-                        cull_mode: wgpu::CullMode::Back,
-                        polygon_mode: wgpu::PolygonMode::Fill,
-                    },
-                    depth_stencil: None,
-                    multisample: wgpu::MultisampleState {
-                        count: 1,
-                        mask: !0,
-                        alpha_to_coverage_enabled: false,
-                    },
-                })
-            },
-            RenderTags::new(InternalShaders::IcedVert, InternalShaders::IcedFrag),
-        );
+        let pipeline = engine
+            .shader_state
+            .render_pipeline_builder("iced pipeline", pipeline_layout, InternalShaders::IcedVert)
+            .fragment(
+                InternalShaders::IcedFrag,
+                wgpu::ColorTargetState {
+                    format,
+                    alpha_blend: wgpu::BlendState::REPLACE,
+                    color_blend: wgpu::BlendState::REPLACE,
+                    write_mask: wgpu::ColorWrite::ALL,
+                },
+            )
+            .primitive(wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: wgpu::CullMode::Back,
+                polygon_mode: wgpu::PolygonMode::Fill,
+            })
+            .depth_stencil(None)
+            .multisample(1, !0, false)
+            .build();
 
         Self {
             state,
