@@ -488,7 +488,7 @@ impl<'a> RenderPipelineBuilder<'a> {
         self
     }
 
-    /// Set the depth stencil state
+    /// Set the depth stencil state.
     pub fn depth_stencil(
         mut self,
         depth_stencil: impl Into<Option<wgpu::DepthStencilState>>,
@@ -515,31 +515,23 @@ impl<'a> RenderPipelineBuilder<'a> {
         let primitive = self.primitive;
         let depth_stencil = self.depth_stencil;
         let layout = self.layout;
-        let vert_main = state
-            .shader_map
-            .get(&self.vertex)
-            .unwrap()
-            .0
-            .as_ref()
-            .unwrap()
-            .entry_point
-            .clone();
+        let vert_ref = state.shader_map.get(&self.vertex).unwrap();
+        let vert_main = vert_ref.0.as_ref().unwrap().entry_point.clone();
+        let vertex = ShaderRef(vert_ref);
         let frag_tag = self.fragment.as_ref().map(|i| i.0);
         let vert_tag = self.vertex;
         let fragment = self.fragment.map(|i| {
+            let frag_ref = state.shader_map.get(&i.0).unwrap();
             (
-                state
-                    .shader_map
-                    .get(&i.0)
-                    .unwrap()
-                    .0
-                    .as_ref()
-                    .unwrap()
-                    .entry_point
-                    .clone(),
+                frag_ref.0.as_ref().unwrap().entry_point.clone(),
+                ShaderRef(frag_ref),
                 i.1,
             )
         });
+        let (fragment, frag_data) = match fragment {
+            Some((tag, r, targets)) => (Some(r), Some((tag, targets))),
+            None => (None, None),
+        };
         let tags = RenderTags::new(vert_tag, frag_tag);
         let manufacturer = Box::new(move |dev: &wgpu::Device, shaders: RenderSet| {
             let label: Option<&str> = lbl.as_ref().map(|i| i.as_str());
@@ -552,7 +544,7 @@ impl<'a> RenderPipelineBuilder<'a> {
                     buffers: &[],
                 },
                 fragment: shaders.fragment.as_ref().map(|frag| {
-                    let (main, targets) = fragment.as_ref().unwrap();
+                    let (main, targets) = frag_data.as_ref().unwrap();
                     wgpu::FragmentState {
                         module: frag,
                         entry_point: main,
@@ -564,7 +556,10 @@ impl<'a> RenderPipelineBuilder<'a> {
                 multisample: multisample.clone(),
             })
         }) as Manufacturer;
-        let ret = Arc::new((manufacturer)(&state.device, state.create_render_set(tags)));
+        let ret = Arc::new((manufacturer)(
+            &state.device,
+            RenderSet { vertex, fragment },
+        ));
         let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret));
         state.manufacturers.write().unwrap().push(val);
         ret
