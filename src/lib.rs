@@ -1,10 +1,15 @@
+// TODO: uncomment this
+// #![forbid(missing_docs)]
+
 #[macro_use]
 mod engine;
 mod engine_builder;
 mod fps;
-mod graphics;
+pub mod graphics;
 /// Everything related to managing shaders.
 pub mod shaders;
+pub use shaderc::ShaderKind;
+
 /// Everything related to drawing user interfaces.
 pub mod ui;
 

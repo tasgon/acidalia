@@ -19,6 +19,7 @@ use iced_winit::{
 
 use crate::{
     engine::{Element, Engine},
+    graphics::ToExtent,
     shaders::{InternalShaders, RenderTags},
 };
 
@@ -84,11 +85,7 @@ impl<
         );
         let dest_tex = gs.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("iced tex"),
-            size: wgpu::Extent3d {
-                width: gs.get_size().width,
-                height: gs.get_size().height,
-                depth: 1,
-            },
+            size: gs.get_size().to_extent(1),
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             mip_level_count: 1,
             sample_count: 1,
@@ -112,89 +109,35 @@ impl<
                 contents: bytemuck::cast_slice(INDICES),
                 usage: wgpu::BufferUsage::INDEX,
             });
-        let bind_group_layout =
-            gs.device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStage::FRAGMENT,
-                            ty: wgpu::BindingType::Texture {
-                                multisampled: false,
-                                view_dimension: wgpu::TextureViewDimension::D2,
-                                sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStage::FRAGMENT,
-                            ty: wgpu::BindingType::Sampler {
-                                comparison: false,
-                                filtering: true,
-                            },
-                            count: None,
-                        },
-                    ],
-                    label: Some("iced bgl"),
-                });
-        let bind_group = gs.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&dest_view),
+        let bind_group_layout = gs
+            .bind_group_layout("iced bgl")
+            .add(
+                None,
+                wgpu::ShaderStage::FRAGMENT,
+                wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                 },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
+            )
+            .add(
+                None,
+                wgpu::ShaderStage::FRAGMENT,
+                wgpu::BindingType::Sampler {
+                    comparison: false,
+                    filtering: true,
                 },
-            ],
-            label: Some("iced bg"),
-        });
-        let pipeline_layout = gs
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("iced pipeline layout"),
-                bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
-            });
-        // let pipeline = gs
-        //     .device
-        //     .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        //         label: Some("iced pipeline"),
-        //         layout: Some(&pipeline_layout),
-        //         vertex: wgpu::VertexState {
-        //             module: &engine.shader_state.get(InternalShaders::IcedVert).unwrap(),
-        //             entry_point: "main",
-        //             buffers: &[],
-        //         },
-        //         fragment: Some(wgpu::FragmentState {
-        //             module: &engine.shader_state.get(InternalShaders::IcedFrag).unwrap(),
-        //             entry_point: "main",
-        //             targets: &[wgpu::ColorTargetState {
-        //                 format: gs.swapchain_descriptor.format,
-        //                 alpha_blend: wgpu::BlendState::REPLACE,
-        //                 color_blend: wgpu::BlendState::REPLACE,
-        //                 write_mask: wgpu::ColorWrite::ALL,
-        //             }],
-        //         }),
-        //         primitive: wgpu::PrimitiveState {
-        //             topology: wgpu::PrimitiveTopology::TriangleList,
-        //             strip_index_format: None,
-        //             front_face: wgpu::FrontFace::Ccw,
-        //             cull_mode: wgpu::CullMode::Back,
-        //             polygon_mode: wgpu::PolygonMode::Fill,
-        //         },
-        //         depth_stencil: None,
-        //         multisample: wgpu::MultisampleState {
-        //             count: 1,
-        //             mask: !0,
-        //             alpha_to_coverage_enabled: false,
-        //         },
-        //     });
+            )
+            .build();
+        let bind_group = gs
+            .bind_group("iced bg", &bind_group_layout)
+            .add(&dest_view)
+            .add(&sampler)
+            .build();
+        let pipeline_layout =
+            gs.pipeline_layout("iced pipeline layout", &[&bind_group_layout], &[]);
         let format = gs.swapchain_descriptor.format;
-        let pipeline = engine.shader_state.pipeline(
+        let pipeline = engine.shader_state.render_pipeline(
             gs,
             move |dev, shaders| {
                 dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -206,7 +149,7 @@ impl<
                         buffers: &[],
                     },
                     fragment: Some(wgpu::FragmentState {
-                        module: &shaders.fragment,
+                        module: &shaders.fragment.unwrap(),
                         entry_point: "main",
                         targets: &[wgpu::ColorTargetState {
                             format,
@@ -232,8 +175,6 @@ impl<
             },
             RenderTags::new(InternalShaders::IcedVert, InternalShaders::IcedFrag),
         );
-
-        //engine.shader_state.pipeline(gs, f, tags)
 
         Self {
             state,
@@ -306,20 +247,11 @@ impl<
                         self.dest_view = self
                             .dest_tex
                             .create_view(&wgpu::TextureViewDescriptor::default());
-                        self.bind_group = gs.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                            layout: &self.bind_group_layout,
-                            entries: &[
-                                wgpu::BindGroupEntry {
-                                    binding: 0,
-                                    resource: wgpu::BindingResource::TextureView(&self.dest_view),
-                                },
-                                wgpu::BindGroupEntry {
-                                    binding: 1,
-                                    resource: wgpu::BindingResource::Sampler(&self.sampler),
-                                },
-                            ],
-                            label: Some("iced bg"),
-                        });
+                        self.bind_group = gs
+                            .bind_group("iced bg", &self.bind_group_layout)
+                            .add(&self.dest_view)
+                            .add(&self.sampler)
+                            .build();
                     }
                     _ => (),
                 }
@@ -359,11 +291,7 @@ impl<
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {
         let gs = &mut engine.graphics_state;
-        let mut encoder = gs
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("iced encoder"),
-            });
+        let mut encoder = gs.command_encoder("iced encoder");
 
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
@@ -371,12 +299,7 @@ impl<
                 attachment: &self.dest_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.0,
-                        g: 0.0,
-                        b: 0.0,
-                        a: 0.0,
-                    }),
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
                     store: true,
                 },
             }],
