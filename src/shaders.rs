@@ -46,10 +46,16 @@ impl ManufacturingOutput {
         panic!("This isn't a compute pipeline")
     }
 
-    fn raw(&self) -> *mut () {
+    unsafe fn swap(&self, val: &Arc<dyn Send + Sync>) {
         match self {
-            ManufacturingOutput::RenderPipeline(v) => (v as *const RenderPipeline) as *mut (),
-            ManufacturingOutput::ComputePipeline(v) => (v as *const ComputePipeline) as *mut (),
+            ManufacturingOutput::RenderPipeline(v) => {
+                let ptr = (v as *const _) as *mut RenderPipeline;
+                std::ptr::swap(Arc::as_ptr(val) as *mut RenderPipeline, ptr)
+            }
+            ManufacturingOutput::ComputePipeline(v) => {
+                let ptr = (v as *const _) as *mut ComputePipeline;
+                std::ptr::swap(Arc::as_ptr(val) as *mut ComputePipeline, ptr)
+            }
         }
     }
 }
@@ -283,11 +289,7 @@ impl ShaderState {
                                     // TODO: this is probably way too much premature optimization, and I should rethink my
                                     // design soon. maybe just switch to an ecs or something similar?
                                     unsafe {
-                                        std::ptr::swap(
-                                            Arc::as_ptr(&pipe_ref)
-                                                as *mut (),
-                                            new_pipeline.raw(),
-                                        );
+                                        new_pipeline.swap(&pipe_ref);
                                     }
                                     garbage.push(new_pipeline);
                                 }
