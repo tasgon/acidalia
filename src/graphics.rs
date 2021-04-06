@@ -8,7 +8,7 @@ use futures;
 use futures::executor::block_on;
 use wgpu::{
     BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingResource, BindingType,
-    CommandEncoder, CommandEncoderDescriptor, Device, MultisampleState, PipelineLayout,
+    CommandEncoder, CommandEncoderDescriptor, Device, PipelineLayout,
     PipelineLayoutDescriptor, PushConstantRange, ShaderStage,
 };
 use winit::dpi::PhysicalSize;

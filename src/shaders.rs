@@ -13,7 +13,7 @@ use notify::{
     EventKind, RecommendedWatcher, Watcher,
 };
 use shaderc;
-use std::{any::Any, path::PathBuf};
+use std::{path::PathBuf};
 use std::{
     collections::hash_map::RandomState,
     ops::Deref,
@@ -123,7 +123,8 @@ enum CompilerMessage {
     FromFile(u128, ShaderSourceDescriptor),
     FromString(u128, ShaderSourceDescriptor),
     CullRefs,
-    Interrupt,
+    #[allow(dead_code)]
+    Interrupt, // TODO: think about if i really need this
 }
 
 type ShaderMap = DashMap<u128, (Option<ShaderSourceDescriptor>, ShaderModule)>;
@@ -276,7 +277,7 @@ impl ShaderState {
                         for data in mfs.iter() {
                             if data.tags.has_tag(key) {
                                 let render_set = create_render_set(&sm, data.tags);
-                                let mut new_pipeline = (data.manufacturer)(&device, render_set);
+                                let new_pipeline = (data.manufacturer)(&device, render_set);
 
                                 if let Some(pipe_ref) = data.pipeline.clone().upgrade() {
                                     // TODO: this is probably way too much premature optimization, and I should rethink my
@@ -396,27 +397,6 @@ impl ShaderState {
             None,
         );
     }
-
-    /// Assemble a set of vertex and fragment [`ShaderModule`]s to be used in the manufactory.
-    fn create_render_set(&self, tags: ShaderTags) -> ShaderSet {
-        create_render_set(&self.shader_map, tags)
-    }
-
-    /// Create a new render pipeline manufacturer with a manufacturing function and a set of tags to use in the pipeline.
-    /// The function is expected to consume a [`RenderSet`] and return a [`RenderPipeline`].
-    // pub fn render_pipeline(
-    //     &mut self,
-    //     gs: &GraphicsState,
-    //     f: impl Fn(&wgpu::Device, ShaderSet) -> ManufacturingOutput + Send + Sync + 'static,
-    //     tags: ShaderTags,
-    // ) -> Arc<RenderPipeline> {
-    //     let manufacturer = Box::new(f) as Manufacturer;
-    //     let ret = Arc::new((manufacturer)(&gs.device, self.create_render_set(tags)).render());
-    //     let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret));
-    //     self.manufacturers.write().unwrap().push(val);
-    //     ret
-    // }
-
     /// Start constructing a new pipeline using the [`RenderPipelineBuilder`].
     pub fn render_pipeline_builder<T: Into<String>>(
         &self,

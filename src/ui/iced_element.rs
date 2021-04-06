@@ -71,7 +71,7 @@ impl<
             engine.window.scale_factor(),
         );
         let mut renderer = Renderer::new(Backend::new(&mut gs.device, Settings::default()));
-        let mut clipboard = Clipboard::connect(&engine.window);
+        let clipboard = Clipboard::connect(&engine.window);
         let cursor_position = PhysicalPosition::new(-1.0, -1.0);
         let modifiers = ModifiersState::default();
         let state = program::State::new(
@@ -268,7 +268,7 @@ impl<
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
-        data: &mut Self::Data,
+        _data: &mut Self::Data,
         _frame: &wgpu::SwapChainFrame,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {

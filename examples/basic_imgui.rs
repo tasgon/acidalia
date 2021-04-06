@@ -17,7 +17,7 @@ fn main() {
         })
         .build();
     let ui_el = ImguiElement::new(
-        |ui, engine, d: &mut Data| {
+        |ui, _engine, d: &mut Data| {
             imgui::Window::new(im_str!("Main")).build(ui, || {
                 if ui.small_button(im_str!("Increment count")) {
                     d.count += 1;
