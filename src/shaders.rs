@@ -1,4 +1,9 @@
-use crate::{engine, wgpu};
+// The single worst mistake that I have made so far was to try and be clever about hot reloading.
+// The second worst mistake was doing those """clever""" tricks specific to my shader management code.
+// To conclude, beware he who has to go through this file.
+// TODO: move the manufactury into its own crate probably and generally be way smarter about this
+
+use crate::{wgpu};
 use acidalia_core::Nametag;
 use acidalia_proc_macros::Nametag;
 use crossbeam_channel::Sender;
@@ -8,7 +13,7 @@ use notify::{
     EventKind, RecommendedWatcher, Watcher,
 };
 use shaderc;
-use std::path::PathBuf;
+use std::{any::Any, path::PathBuf};
 use std::{
     collections::hash_map::RandomState,
     ops::Deref,
@@ -16,20 +21,49 @@ use std::{
     sync::{Arc, RwLock, Weak},
     thread::JoinHandle,
 };
-use wgpu::{RenderPipeline, ShaderModule, ShaderModuleDescriptor};
+use wgpu::{ComputePipeline, PipelineLayout, RenderPipeline, ShaderModule, ShaderModuleDescriptor};
 
 use crate::graphics::GraphicsState;
 
-type Manufacturer = Box<dyn Fn(&wgpu::Device, RenderSet) -> RenderPipeline + Send + Sync>;
+#[derive(derive_more::From)]
+enum ManufacturingOutput {
+    RenderPipeline(wgpu::RenderPipeline),
+    ComputePipeline(wgpu::ComputePipeline),
+}
+
+impl ManufacturingOutput {
+    fn render(self) -> wgpu::RenderPipeline {
+        if let ManufacturingOutput::RenderPipeline(val) = self {
+            return val;
+        }
+        panic!("This isn't a render pipeline")
+    }
+
+    fn compute(self) -> wgpu::ComputePipeline {
+        if let ManufacturingOutput::ComputePipeline(val) = self {
+            return val;
+        }
+        panic!("This isn't a compute pipeline")
+    }
+
+    fn raw(&self) -> *mut () {
+        match self {
+            ManufacturingOutput::RenderPipeline(v) => (v as *const RenderPipeline) as *mut (),
+            ManufacturingOutput::ComputePipeline(v) => (v as *const ComputePipeline) as *mut (),
+        }
+    }
+}
+
+type Manufacturer = Box<dyn Fn(&wgpu::Device, ShaderSet) -> ManufacturingOutput + Send + Sync>;
 
 struct ManufacturingData {
     manufacturer: Manufacturer,
-    tags: RenderTags,
-    pipeline: Weak<RenderPipeline>,
+    tags: ShaderTags,
+    pipeline: Weak<dyn Send + Sync>,
 }
 
 impl ManufacturingData {
-    fn new(manufacturer: Manufacturer, tags: RenderTags, pipeline: Weak<RenderPipeline>) -> Self {
+    fn new(manufacturer: Manufacturer, tags: ShaderTags, pipeline: Weak<dyn Send + Sync>) -> Self {
         Self {
             manufacturer,
             tags,
@@ -98,18 +132,28 @@ fn get_shader_ref(map: &ShaderMap, key: impl Nametag) -> Option<ShaderRef> {
     map.get(&key.tag()).map(|i| i.into())
 }
 
-fn create_render_set(map: &ShaderMap, tags: RenderTags) -> RenderSet {
-    let vertex = get_shader_ref(map, tags.vertex).expect("No shader registered with vertex tag");
-    let fragment = tags
-        .fragment
-        .map(|tag| get_shader_ref(map, tag).expect("No shader registered with fragment tag"));
-    RenderSet { vertex, fragment }
+const LABELS: &'static [&'static str] = &["vertex", "fragment", "compute"];
+
+fn create_render_set(map: &ShaderMap, tags: ShaderTags) -> ShaderSet {
+    let tags = [tags.vertex, tags.fragment, tags.compute];
+    let mut map = tags
+        .iter()
+        .zip(LABELS.iter())
+        .map(|(t, l)| {
+            t.map(|i| {
+                get_shader_ref(map, i).expect(&format!("No shader registered with {} tag", l))
+            })
+        });
+    ShaderSet {
+        vertex: map.next().unwrap(),
+        fragment: map.next().unwrap(),
+        compute: map.next().unwrap(),
+    }
 }
 
 /// A struct that provides shader compilation and access from the program.
 /// Utilizes `shaderc` to compile GLSL source into SPIR-V.
 pub struct ShaderState {
-    //compiler: Arc<Mutex<shaderc::Compiler>>,
     shader_map: Arc<ShaderMap>,
     manufacturers: Arc<RwLock<Vec<ManufacturingData>>>,
     watcher: RecommendedWatcher,
@@ -163,7 +207,7 @@ impl ShaderState {
         let device = std::mem::ManuallyDrop::new(Arc::clone(&gs.device));
         let _handle = std::thread::spawn(move || {
             let mut compiler = shaderc::Compiler::new().unwrap();
-            let mut garbage: Vec<RenderPipeline> = vec![];
+            let mut garbage = vec![];
             'yeet: loop {
                 let val = rx.recv();
                 match val {
@@ -239,9 +283,9 @@ impl ShaderState {
                                     // design soon. maybe just switch to an ecs or something similar?
                                     unsafe {
                                         std::ptr::swap(
-                                            Arc::<RenderPipeline>::as_ptr(&pipe_ref)
-                                                as *mut RenderPipeline,
-                                            &mut new_pipeline as *mut RenderPipeline,
+                                            Arc::as_ptr(&pipe_ref)
+                                                as *mut (),
+                                            new_pipeline.raw(),
                                         );
                                     }
                                     garbage.push(new_pipeline);
@@ -354,31 +398,24 @@ impl ShaderState {
     }
 
     /// Assemble a set of vertex and fragment [`ShaderModule`]s to be used in the manufactory.
-    fn create_render_set(&self, tags: RenderTags) -> RenderSet {
-        let vertex = self
-            .get(tags.vertex)
-            .expect("No shader registered with vertex tag");
-        let fragment = tags.fragment.map(|tag| {
-            self.get(tag)
-                .expect("No shader registered with fragment tag")
-        });
-        RenderSet { vertex, fragment }
+    fn create_render_set(&self, tags: ShaderTags) -> ShaderSet {
+        create_render_set(&self.shader_map, tags)
     }
 
     /// Create a new render pipeline manufacturer with a manufacturing function and a set of tags to use in the pipeline.
     /// The function is expected to consume a [`RenderSet`] and return a [`RenderPipeline`].
-    pub fn render_pipeline(
-        &mut self,
-        gs: &GraphicsState,
-        f: impl Fn(&wgpu::Device, RenderSet) -> RenderPipeline + Send + Sync + 'static,
-        tags: RenderTags,
-    ) -> Arc<RenderPipeline> {
-        let manufacturer = Box::new(f) as Manufacturer;
-        let ret = Arc::new((manufacturer)(&gs.device, self.create_render_set(tags)));
-        let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret));
-        self.manufacturers.write().unwrap().push(val);
-        ret
-    }
+    // pub fn render_pipeline(
+    //     &mut self,
+    //     gs: &GraphicsState,
+    //     f: impl Fn(&wgpu::Device, ShaderSet) -> ManufacturingOutput + Send + Sync + 'static,
+    //     tags: ShaderTags,
+    // ) -> Arc<RenderPipeline> {
+    //     let manufacturer = Box::new(f) as Manufacturer;
+    //     let ret = Arc::new((manufacturer)(&gs.device, self.create_render_set(tags)).render());
+    //     let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret));
+    //     self.manufacturers.write().unwrap().push(val);
+    //     ret
+    // }
 
     /// Start constructing a new pipeline using the [`RenderPipelineBuilder`].
     pub fn render_pipeline_builder<T: Into<String>>(
@@ -388,6 +425,16 @@ impl ShaderState {
         vertex: impl Nametag,
     ) -> RenderPipelineBuilder {
         RenderPipelineBuilder::new(self, label.into().map(|i| i.into()), layout, vertex)
+    }
+
+    /// Create a new compute pipeline.
+    pub fn compute_pipeline<T: Into<String>>(&self, label: impl Into<Option<T>>, layout: impl Into<Option<wgpu::PipelineLayout>>, shader: impl Nametag) -> Arc<ComputePipeline> {
+        ComputePipelineBuilder {
+            state: self,
+            label: label.into().map(|i| i.into()),
+            layout: layout.into(),
+            module: shader.tag(),
+        }.build()
     }
 
     /// Tell the manufactory to cull all unused render pipelines.
@@ -405,29 +452,43 @@ pub enum InternalShaders {
 }
 
 #[derive(Hash, Copy, Clone)]
-pub struct RenderTags {
-    pub vertex: u128,
+pub struct ShaderTags {
+    pub vertex: Option<u128>,
     pub fragment: Option<u128>,
+    pub compute: Option<u128>,
 }
 
-impl RenderTags {
-    pub fn new<T: Nametag>(vertex: impl Nametag, fragment: Option<T>) -> Self {
+impl ShaderTags {
+    fn render<T: Nametag>(vertex: impl Nametag, fragment: Option<T>) -> Self {
         Self {
-            vertex: vertex.tag(),
+            vertex: Some(vertex.tag()),
             fragment: fragment.map(|i| i.tag()),
+            compute: None,
+        }
+    }
+
+    fn compute(compute: impl Nametag) -> Self {
+        Self {
+            vertex: None,
+            fragment: None,
+            compute: Some(compute.tag())
         }
     }
 }
 
-impl RenderTags {
+impl ShaderTags {
     fn has_tag(&self, tag: u128) -> bool {
-        self.vertex == tag || self.fragment.map(|i| i == tag).unwrap_or(false)
+        [self.vertex, self.fragment]
+            .iter()
+            .map(|i| i.map(|j| j == tag).unwrap_or(false))
+            .fold(false, |a, i| a | i)
     }
 }
 
-pub struct RenderSet<'a> {
-    pub vertex: ShaderRef<'a>,
+pub struct ShaderSet<'a> {
+    pub vertex: Option<ShaderRef<'a>>,
     pub fragment: Option<ShaderRef<'a>>,
+    pub compute: Option<ShaderRef<'a>>,
 }
 
 /// This tells the engine how to build your render pipelines.
@@ -517,7 +578,7 @@ impl<'a> RenderPipelineBuilder<'a> {
         let layout = self.layout;
         let vert_ref = state.shader_map.get(&self.vertex).unwrap();
         let vert_main = vert_ref.0.as_ref().unwrap().entry_point.clone();
-        let vertex = ShaderRef(vert_ref);
+        let vertex = Some(ShaderRef(vert_ref));
         let frag_tag = self.fragment.as_ref().map(|i| i.0);
         let vert_tag = self.vertex;
         let fragment = self.fragment.map(|i| {
@@ -532,14 +593,14 @@ impl<'a> RenderPipelineBuilder<'a> {
             Some((tag, r, targets)) => (Some(r), Some((tag, targets))),
             None => (None, None),
         };
-        let tags = RenderTags::new(vert_tag, frag_tag);
-        let manufacturer = Box::new(move |dev: &wgpu::Device, shaders: RenderSet| {
+        let tags = ShaderTags::render(vert_tag, frag_tag);
+        let manufacturer = Box::new(move |dev: &wgpu::Device, shaders: ShaderSet| {
             let label: Option<&str> = lbl.as_ref().map(|i| i.as_str());
             dev.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label,
                 layout: Some(&layout),
                 vertex: wgpu::VertexState {
-                    module: &shaders.vertex,
+                    module: &shaders.vertex.unwrap(),
                     entry_point: vert_main.as_str(),
                     buffers: &[],
                 },
@@ -554,13 +615,45 @@ impl<'a> RenderPipelineBuilder<'a> {
                 primitive: primitive.clone(),
                 depth_stencil: depth_stencil.clone(),
                 multisample: multisample.clone(),
-            })
+            }).into()
         }) as Manufacturer;
         let ret = Arc::new((manufacturer)(
             &state.device,
-            RenderSet { vertex, fragment },
-        ));
-        let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret));
+            ShaderSet { vertex, fragment, compute: None },
+        ).render());
+        let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret) as Weak<dyn Send + Sync>);
+        state.manufacturers.write().unwrap().push(val);
+        ret
+    }
+}
+
+pub struct ComputePipelineBuilder<'a> {
+    state: &'a ShaderState,
+    label: Option<String>,
+    layout: Option<PipelineLayout>,
+    module: u128,
+}
+
+impl<'a> ComputePipelineBuilder<'a> {
+    pub fn build(self) -> Arc<ComputePipeline> {
+        let state = self.state;
+        let label = self.label;
+        let layout = self.layout;
+        let module = self.module;
+        let comp_ref = state.shader_map.get(&self.module).unwrap();
+        let entry_point = comp_ref.0.as_ref().unwrap().entry_point.clone();
+        let set = ShaderSet { vertex: None, fragment: None, compute: Some(ShaderRef(comp_ref))};
+        let manufacturer = Box::new(move |dev: &wgpu::Device, shaders: ShaderSet| {
+            dev.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: label.as_deref(),
+                layout: layout.as_ref(),
+                module: &shaders.compute.unwrap(),
+                entry_point: entry_point.as_str(),
+            }).into()
+        }) as Manufacturer;
+        let tags = ShaderTags::compute(module);
+        let ret = Arc::new((manufacturer)(&state.device, set).compute());
+        let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret) as Weak<dyn Send + Sync>);
         state.manufacturers.write().unwrap().push(val);
         ret
     }
@@ -579,5 +672,11 @@ impl<T> ToVec<T> for Vec<T> {
 impl<T> ToVec<T> for T {
     fn to_vec(self) -> Vec<T> {
         vec![self]
+    }
+}
+
+impl<T, const N: usize> ToVec<T> for [T; N] {
+    fn to_vec(self) -> Vec<T> {
+        self.into()
     }
 }

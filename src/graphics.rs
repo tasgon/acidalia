@@ -118,6 +118,7 @@ impl GraphicsState {
         }
     }
 
+    /// Create a pipeline layout.
     pub fn pipeline_layout<'a>(
         &self,
         label: impl Into<Option<&'a str>>,
@@ -268,29 +269,5 @@ impl<'a> AsBindingResource<'a> for &'a wgpu::TextureView {
 impl<'a> AsBindingResource<'a> for &'a [&'a wgpu::TextureView] {
     fn as_binding_resource(self) -> BindingResource<'a> {
         wgpu::BindingResource::TextureViewArray(self)
-    }
-}
-
-pub struct RenderPipelineConstructor {
-    label: Option<String>,
-}
-
-impl RenderPipelineConstructor {
-    pub fn new(label: impl Into<Option<String>>) -> Self {
-        Self {
-            label: label.into(),
-        }
-    }
-}
-
-pub fn multisample_state(
-    count: u32,
-    mask: u64,
-    alpha_to_coverage_enabled: bool,
-) -> MultisampleState {
-    MultisampleState {
-        count,
-        mask,
-        alpha_to_coverage_enabled,
     }
 }

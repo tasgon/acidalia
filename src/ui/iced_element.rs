@@ -6,9 +6,7 @@ use iced_wgpu::{
     Backend, Renderer, Settings, Viewport,
 };
 use iced_winit::{
-    conversion, futures,
-    image::Data,
-    program,
+    conversion, futures, program,
     winit::{
         self,
         dpi::PhysicalPosition,
@@ -20,7 +18,7 @@ use iced_winit::{
 use crate::{
     engine::{Element, Engine},
     graphics::ToExtent,
-    shaders::{InternalShaders, RenderTags},
+    shaders::InternalShaders,
 };
 
 const INDICES: &[u16] = &[0, 2, 1, 1, 2, 3];
