@@ -185,14 +185,12 @@ impl<
         D,
         T: Program<Renderer = Renderer, Clipboard = Clipboard>,
         F: FnMut(&mut program::State<T>, &mut D),
-    > Element for IcedElement<D, T, F>
+    > Element<D> for IcedElement<D, T, F>
 {
-    type Data = D;
-
     fn update(
         &mut self,
         engine: &mut Engine,
-        data: &mut Self::Data,
+        data: &mut D,
         event: &winit::event::Event<()>,
     ) {
         match event {
@@ -268,7 +266,7 @@ impl<
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
-        _data: &mut Self::Data,
+        _data: &mut D,
         _frame: &wgpu::SwapChainFrame,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {

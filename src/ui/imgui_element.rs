@@ -59,13 +59,11 @@ impl<T, F: Fn(&Ui, &Engine, &mut T)> ImguiElement<T, F> {
     }
 }
 
-impl<T, F: Fn(&Ui, &Engine, &mut T)> Element for ImguiElement<T, F> {
-    type Data = T;
-
+impl<T, F: Fn(&Ui, &Engine, &mut T)> Element<T> for ImguiElement<T, F> {
     fn update(
         &mut self,
         engine: &mut Engine,
-        _data: &mut Self::Data,
+        _data: &mut T,
         event: &crate::winit::event::Event<()>,
     ) {
         self.platform
@@ -75,7 +73,7 @@ impl<T, F: Fn(&Ui, &Engine, &mut T)> Element for ImguiElement<T, F> {
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
-        data: &mut Self::Data,
+        data: &mut T,
         _frame: &wgpu::SwapChainFrame,
         rpass: &mut wgpu::RenderPass<'rp>,
     ) {

@@ -617,7 +617,7 @@ pub struct ComputePipelineBuilder<'a> {
 }
 
 impl<'a> ComputePipelineBuilder<'a> {
-    pub fn build(self) -> Arc<ComputePipeline> {
+    fn build(self) -> Arc<ComputePipeline> {
         let state = self.state;
         let label = self.label;
         let layout = self.layout;

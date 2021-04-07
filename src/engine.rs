@@ -117,11 +117,10 @@ impl Engine {
 }
 
 /// Represents items that have update events and draw to the screen.
-pub trait Element {
-    type Data;
+pub trait Element<Data> {
 
     /// Process `winit` events.
-    fn update(&mut self, engine: &mut Engine, data: &mut Self::Data, event: &Event<()>);
+    fn update(&mut self, engine: &mut Engine, data: &mut Data, event: &Event<()>);
 
     /// Draw to the screen. Note: it is expected that trait implementers will use
     /// the supplied render pass, however, to explain the lifetime annotations,
@@ -130,15 +129,31 @@ pub trait Element {
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
-        data: &mut Self::Data,
+        data: &mut Data,
         frame: &wgpu::SwapChainFrame,
         render_pass: &mut wgpu::RenderPass<'rp>,
     );
 }
 
+impl<D, T: for<'rp> Fn(&mut Engine, &mut D, &wgpu::SwapChainFrame, &mut wgpu::RenderPass<'rp>)> Element<D> for T {
+
+    fn update(&mut self, _engine: &mut Engine, _data: &mut D, _event: &Event<()>) {
+    }
+
+    fn render<'a: 'rp, 'rp>(
+        &'a mut self,
+        engine: &mut Engine,
+        data: &mut D,
+        frame: &wgpu::SwapChainFrame,
+        render_pass: &mut wgpu::RenderPass<'rp>,
+    ) {
+        (self)(engine, data, frame, render_pass)
+    }
+}
+
 /// A list of `Elements` that will all update and draw on the screen.
 /// The draw order is the element order.
-pub type Screen<T> = Vec<Box<dyn Element<Data = T>>>;
+pub type Screen<T> = Vec<Box<dyn Element<T>>>;
 
 /// Convenience macro to construct a `Screen` from a list of objects
 /// that implement the `Element` trait.
