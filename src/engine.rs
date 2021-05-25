@@ -42,7 +42,8 @@ impl Engine {
     }
 
     /// Runs the event loop with an initial `Screen`.
-    pub fn run<T: 'static>(mut self, screen: Screen<T>, mut data: T) {
+    pub fn run<T: 'static>(mut self, screen: impl ToScreen<T>, mut data: T) {
+        let screen = screen.to_screen();
         let evloop = self.event_loop.take().unwrap();
         self.fps.set_elements(screen.len());
         let mut screens: Vec<Screen<T>> = vec![screen];
@@ -79,8 +80,8 @@ impl Engine {
                         let mut render_pass =
                             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                                 label: None,
-                                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                                    attachment: &frame.output.view,
+                                color_attachments: &[wgpu::RenderPassColorAttachment {
+                                    view: &frame.output.view,
                                     resolve_target: None,
                                     ops: wgpu::Operations {
                                         load: wgpu::LoadOp::Clear(self.background_color),
@@ -135,6 +136,7 @@ pub trait Element<Data> {
     );
 }
 
+// TODO: this shit dont work. why? has i ever?
 impl<D, T: for<'rp> Fn(&mut Engine, &mut D, &wgpu::SwapChainFrame, &mut wgpu::RenderPass<'rp>)> Element<D> for T {
 
     fn update(&mut self, _engine: &mut Engine, _data: &mut D, _event: &Event<()>) {
@@ -155,11 +157,27 @@ impl<D, T: for<'rp> Fn(&mut Engine, &mut D, &wgpu::SwapChainFrame, &mut wgpu::Re
 /// The draw order is the element order.
 pub type Screen<T> = Vec<Box<dyn Element<T>>>;
 
+pub trait ToScreen<T> {
+    fn to_screen(self) -> Screen<T>;
+}
+
+impl<T> ToScreen<T> for Screen<T> {
+    fn to_screen(self) -> Screen<T> {
+        self
+    }
+}
+
+impl<D, T: Into<Box<dyn Element<D>>>> ToScreen<D> for T {
+    fn to_screen(self) -> Screen<D> {
+        vec![self.into()]
+    }
+}
+
 /// Convenience macro to construct a `Screen` from a list of objects
 /// that implement the `Element` trait.
 #[macro_export]
 macro_rules! screen {
     ($($el:expr),*) => {
-        vec![$(Box::new($el), )*]
+        vec![$(Box::new($el) as Box<dyn acidalia::Element<_>>, )*]
     };
 }

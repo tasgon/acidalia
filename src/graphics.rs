@@ -141,11 +141,11 @@ pub trait ToExtent {
 }
 
 impl ToExtent for PhysicalSize<u32> {
-    fn to_extent(self, depth: u32) -> wgpu::Extent3d {
+    fn to_extent(self, depth_or_array_layers: u32) -> wgpu::Extent3d {
         wgpu::Extent3d {
             width: self.width,
             height: self.height,
-            depth,
+            depth_or_array_layers,
         }
     }
 }

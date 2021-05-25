@@ -15,13 +15,12 @@ members = ["acidalia_core", "acidalia_proc_macros"]
 
 [features]
 default = []
-iced = ["iced_wgpu", "iced_winit"]
 
 [dependencies]
 shaderc = "0.7"
 futures = "0.3"
-wgpu = "0.7"
-winit = "0.24"
+wgpu = "0.8"
+winit = "0.25"
 derive_more = "0.99"
 bytemuck = "1.5"
 acidalia_proc_macros = { path = "./acidalia_proc_macros/", version = "0.1" }
@@ -31,12 +30,9 @@ crossbeam-channel = "0.5.0"
 notify = "5.0.0-pre.6"
 dashmap = "4.0"
 
-iced_wgpu = { version = "0.4", optional = true }
-iced_winit = { version = "0.3", optional = true }
-
-imgui-wgpu = "0.14"
+imgui-wgpu = "0.15"
 imgui = "0.7"
-imgui-winit-support = "0.7"
+imgui-winit-support = { version = "0.7", default-features = false, features = ["winit-25"] }
 
 #egui = "0.8"
 #epi = "0.8"
