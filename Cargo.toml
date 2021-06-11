@@ -34,6 +34,8 @@ imgui-wgpu = "0.15"
 imgui = "0.7"
 imgui-winit-support = { version = "0.7", default-features = false, features = ["winit-25"] }
 
+image = "0.23"
+
 #egui = "0.8"
 #epi = "0.8"
 #egui_wgpu_backend = "0.4"

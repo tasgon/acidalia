@@ -117,9 +117,14 @@ impl Engine {
     }
 }
 
+impl AsRef<GraphicsState> for Engine {
+    fn as_ref(&self) -> &GraphicsState {
+        &self.graphics_state
+    }
+}
+
 /// Represents items that have update events and draw to the screen.
 pub trait Element<Data> {
-
     /// Process `winit` events.
     fn update(&mut self, engine: &mut Engine, data: &mut Data, event: &Event<()>);
 
@@ -137,10 +142,10 @@ pub trait Element<Data> {
 }
 
 // TODO: this shit dont work. why? has i ever?
-impl<D, T: for<'rp> Fn(&mut Engine, &mut D, &wgpu::SwapChainFrame, &mut wgpu::RenderPass<'rp>)> Element<D> for T {
-
-    fn update(&mut self, _engine: &mut Engine, _data: &mut D, _event: &Event<()>) {
-    }
+impl<D, T: for<'rp> Fn(&mut Engine, &mut D, &wgpu::SwapChainFrame, &mut wgpu::RenderPass<'rp>)>
+    Element<D> for T
+{
+    fn update(&mut self, _engine: &mut Engine, _data: &mut D, _event: &Event<()>) {}
 
     fn render<'a: 'rp, 'rp>(
         &'a mut self,

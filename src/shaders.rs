@@ -3,7 +3,7 @@
 // To conclude, beware he who has to go through this file.
 // TODO: move the manufactury into its own crate probably and generally be way smarter about this
 
-use crate::{wgpu};
+use crate::wgpu;
 use acidalia_core::Nametag;
 use acidalia_proc_macros::Nametag;
 use crossbeam_channel::Sender;
@@ -13,7 +13,7 @@ use notify::{
     EventKind, RecommendedWatcher, Watcher,
 };
 use shaderc;
-use std::{path::PathBuf};
+use std::path::PathBuf;
 use std::{
     collections::hash_map::RandomState,
     ops::Deref,
@@ -143,14 +143,9 @@ const LABELS: &'static [&'static str] = &["vertex", "fragment", "compute"];
 
 fn create_render_set(map: &ShaderMap, tags: ShaderTags) -> ShaderSet {
     let tags = [tags.vertex, tags.fragment, tags.compute];
-    let mut map = tags
-        .iter()
-        .zip(LABELS.iter())
-        .map(|(t, l)| {
-            t.map(|i| {
-                get_shader_ref(map, i).expect(&format!("No shader registered with {} tag", l))
-            })
-        });
+    let mut map = tags.iter().zip(LABELS.iter()).map(|(t, l)| {
+        t.map(|i| get_shader_ref(map, i).expect(&format!("No shader registered with {} tag", l)))
+    });
     ShaderSet {
         vertex: map.next().unwrap(),
         fragment: map.next().unwrap(),
@@ -410,13 +405,19 @@ impl ShaderState {
     }
 
     /// Create a new compute pipeline.
-    pub fn compute_pipeline<T: Into<String>>(&self, label: impl Into<Option<T>>, layout: impl Into<Option<wgpu::PipelineLayout>>, shader: impl Nametag) -> Arc<ComputePipeline> {
+    pub fn compute_pipeline<T: Into<String>>(
+        &self,
+        label: impl Into<Option<T>>,
+        layout: impl Into<Option<wgpu::PipelineLayout>>,
+        shader: impl Nametag,
+    ) -> Arc<ComputePipeline> {
         ComputePipelineBuilder {
             state: self,
             label: label.into().map(|i| i.into()),
             layout: layout.into(),
             module: shader.tag(),
-        }.build()
+        }
+        .build()
     }
 
     /// Tell the manufactory to cull all unused render pipelines.
@@ -453,7 +454,7 @@ impl ShaderTags {
         Self {
             vertex: None,
             fragment: None,
-            compute: Some(compute.tag())
+            compute: Some(compute.tag()),
         }
     }
 }
@@ -599,13 +600,25 @@ impl<'a> RenderPipelineBuilder<'a> {
                 primitive: primitive.clone(),
                 depth_stencil: depth_stencil.clone(),
                 multisample: multisample.clone(),
-            }).into()
+            })
+            .into()
         }) as Manufacturer;
-        let ret = Arc::new((manufacturer)(
-            &state.device,
-            ShaderSet { vertex, fragment, compute: None },
-        ).render());
-        let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret) as Weak<dyn Send + Sync>);
+        let ret = Arc::new(
+            (manufacturer)(
+                &state.device,
+                ShaderSet {
+                    vertex,
+                    fragment,
+                    compute: None,
+                },
+            )
+            .render(),
+        );
+        let val = ManufacturingData::new(
+            manufacturer,
+            tags,
+            Arc::downgrade(&ret) as Weak<dyn Send + Sync>,
+        );
         state.manufacturers.write().unwrap().push(val);
         ret
     }
@@ -626,18 +639,27 @@ impl<'a> ComputePipelineBuilder<'a> {
         let module = self.module;
         let comp_ref = state.shader_map.get(&self.module).unwrap();
         let entry_point = comp_ref.0.as_ref().unwrap().entry_point.clone();
-        let set = ShaderSet { vertex: None, fragment: None, compute: Some(ShaderRef(comp_ref))};
+        let set = ShaderSet {
+            vertex: None,
+            fragment: None,
+            compute: Some(ShaderRef(comp_ref)),
+        };
         let manufacturer = Box::new(move |dev: &wgpu::Device, shaders: ShaderSet| {
             dev.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: label.as_deref(),
                 layout: layout.as_ref(),
                 module: &shaders.compute.unwrap(),
                 entry_point: entry_point.as_str(),
-            }).into()
+            })
+            .into()
         }) as Manufacturer;
         let tags = ShaderTags::compute(module);
         let ret = Arc::new((manufacturer)(&state.device, set).compute());
-        let val = ManufacturingData::new(manufacturer, tags, Arc::downgrade(&ret) as Weak<dyn Send + Sync>);
+        let val = ManufacturingData::new(
+            manufacturer,
+            tags,
+            Arc::downgrade(&ret) as Weak<dyn Send + Sync>,
+        );
         state.manufacturers.write().unwrap().push(val);
         ret
     }

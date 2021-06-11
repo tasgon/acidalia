@@ -22,3 +22,5 @@ pub use winit;
 
 pub use acidalia_core::*;
 pub use acidalia_proc_macros::*;
+
+pub mod d2;

@@ -8,8 +8,8 @@ use futures;
 use futures::executor::block_on;
 use wgpu::{
     BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingResource, BindingType,
-    CommandEncoder, CommandEncoderDescriptor, Device, PipelineLayout,
-    PipelineLayoutDescriptor, PushConstantRange, ShaderStage,
+    CommandEncoder, CommandEncoderDescriptor, Device, PipelineLayout, PipelineLayoutDescriptor,
+    PushConstantRange, ShaderStage,
 };
 use winit::dpi::PhysicalSize;
 
@@ -131,6 +131,14 @@ impl GraphicsState {
                 bind_group_layouts,
                 push_constant_ranges,
             })
+    }
+
+    pub fn with_encoder(&mut self, f: impl Fn(&mut CommandEncoder)) {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        f(&mut encoder);
+        self.queue.submit(std::iter::once(encoder.finish()));
     }
 }
 

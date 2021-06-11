@@ -7,6 +7,8 @@ use crate::engine::{Element, Engine};
 /// Builds and renders an [`imgui::Ui`] constructed from a user-defined function.
 pub struct ImguiElement<T, F: Fn(&Ui, &Engine, &mut T)> {
     func: F,
+    // Note to self (since I forgot): this `PhantomData` is here because otherwise the type T
+    // has nothing to attach to, so I have to create a 0-sized element here.
     _phantom: PhantomData<T>,
     gui: imgui::Context,
     renderer: imgui_wgpu::Renderer,
