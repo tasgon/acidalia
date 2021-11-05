@@ -76,7 +76,7 @@ impl<T, F: Fn(&Ui, &Engine, &mut T)> Element<T> for ImguiElement<T, F> {
         &'a mut self,
         engine: &mut Engine,
         data: &mut T,
-        _frame: &wgpu::SwapChainFrame,
+        _frame: &wgpu::SurfaceTexture,
         rpass: &mut wgpu::RenderPass<'rp>,
     ) {
         let gs = &engine.graphics_state;

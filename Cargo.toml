@@ -9,6 +9,7 @@ keywords = ["gamedev", "graphics", "game", "engine", "minimal"]
 homepage = "https://github.com/tasgon/acidalia"
 repository = "https://github.com/tasgon/acidalia"
 documentation = "https://docs.rs/acidalia"
+resolver="2"
 
 [workspace]
 members = ["acidalia_core", "acidalia_proc_macros"]
@@ -19,7 +20,7 @@ default = []
 [dependencies]
 shaderc = "0.7"
 futures = "0.3"
-wgpu = "0.8"
+wgpu = { version = "0.11", features = ["spirv"] }
 winit = "0.25"
 derive_more = "0.99"
 bytemuck = "1.5"
@@ -30,9 +31,9 @@ crossbeam-channel = "0.5.0"
 notify = "5.0.0-pre.6"
 dashmap = "4.0"
 
-imgui-wgpu = "0.15"
-imgui = "0.7"
-imgui-winit-support = { version = "0.7", default-features = false, features = ["winit-25"] }
+imgui-wgpu = "0.18"
+imgui = "0.8"
+imgui-winit-support = { version = "0.8", default-features = false, features = ["winit-25"] }
 
 image = "0.23"
 

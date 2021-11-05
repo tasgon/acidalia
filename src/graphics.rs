@@ -1,16 +1,12 @@
 use std::{num::NonZeroU32, sync::Arc};
 
 //use futures::executor::block_on;
-use crate::wgpu::{self, BackendBit};
+use crate::wgpu::{self, Backend};
 use crate::winit;
 use futures;
 
 use futures::executor::block_on;
-use wgpu::{
-    BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingResource, BindingType,
-    CommandEncoder, CommandEncoderDescriptor, Device, PipelineLayout, PipelineLayoutDescriptor,
-    PushConstantRange, ShaderStage,
-};
+use wgpu::{Backends, BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder, CommandEncoderDescriptor, Device, PipelineLayout, PipelineLayoutDescriptor, PushConstantRange, ShaderStages};
 use winit::dpi::PhysicalSize;
 
 /// A struct containing everything necessary to interact with wgpu.
@@ -20,8 +16,7 @@ pub struct GraphicsState {
     pub adapter: wgpu::Adapter,
     pub device: Arc<wgpu::Device>,
     pub queue: wgpu::Queue,
-    pub swapchain_descriptor: wgpu::SwapChainDescriptor,
-    pub swapchain: wgpu::SwapChain,
+    pub swapchain_descriptor: wgpu::SurfaceConfiguration,
 
     size: winit::dpi::PhysicalSize<u32>,
 }
@@ -30,12 +25,13 @@ impl GraphicsState {
     /// Creates a new `GraphicsState` from a `winit` window.
     pub(crate) fn new(window: &winit::window::Window) -> Self {
         let size = window.inner_size();
-        let instance = wgpu::Instance::new(BackendBit::PRIMARY);
+        let instance = wgpu::Instance::new(Backends::all());
         let surface = unsafe { instance.create_surface(window) };
 
         let adapter_options = wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
             compatible_surface: Some(&surface),
+            force_fallback_adapter: false,
         };
 
         let adapter = block_on(async { instance.request_adapter(&adapter_options).await.unwrap() });
@@ -48,14 +44,14 @@ impl GraphicsState {
         });
         let device = Arc::new(device);
 
-        let swapchain_descriptor = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+        let swapchain_descriptor = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Immediate,
         };
-        let swapchain = device.create_swap_chain(&surface, &swapchain_descriptor);
+        surface.configure(&device, &swapchain_descriptor);
 
         Self {
             instance,
@@ -64,7 +60,6 @@ impl GraphicsState {
             device,
             queue,
             swapchain_descriptor,
-            swapchain,
             size,
         }
     }
@@ -74,9 +69,7 @@ impl GraphicsState {
         self.size = size;
         self.swapchain_descriptor.width = size.width;
         self.swapchain_descriptor.height = size.height;
-        self.swapchain = self
-            .device
-            .create_swap_chain(&self.surface, &self.swapchain_descriptor);
+        self.surface.configure(&self.device, &self.swapchain_descriptor);
     }
 
     /// Gets the swapchain's frame size.
@@ -171,7 +164,7 @@ impl<'a, 'b: 'a> BindGroupLayoutConstructor<'a, 'b> {
         mut self,
         binding: u32,
         count: impl Into<Option<NonZeroU32>>,
-        visibility: ShaderStage,
+        visibility: ShaderStages,
         binding_type: BindingType,
     ) -> Self {
         self.entries.push(BindGroupLayoutEntry {
@@ -188,7 +181,7 @@ impl<'a, 'b: 'a> BindGroupLayoutConstructor<'a, 'b> {
     pub fn add(
         mut self,
         count: impl Into<Option<NonZeroU32>>,
-        visibility: ShaderStage,
+        visibility: ShaderStages,
         binding_type: BindingType,
     ) -> Self {
         let binding = self.entries.len() as u32;

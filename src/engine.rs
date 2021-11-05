@@ -65,7 +65,7 @@ impl Engine {
                     }
                     Event::MainEventsCleared => self.window.request_redraw(),
                     Event::RedrawEventsCleared => {
-                        let frame = match self.graphics_state.swapchain.get_current_frame() {
+                        let frame = match self.graphics_state.surface.get_current_texture() {
                             Ok(frame) => frame,
                             Err(e) => {
                                 eprintln!("dropped frame: {:?}", e);
@@ -77,11 +77,12 @@ impl Engine {
                             &wgpu::CommandEncoderDescriptor { label: None },
                         );
 
+                        let view = &frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
                         let mut render_pass =
                             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                                 label: None,
                                 color_attachments: &[wgpu::RenderPassColorAttachment {
-                                    view: &frame.output.view,
+                                    view,
                                     resolve_target: None,
                                     ops: wgpu::Operations {
                                         load: wgpu::LoadOp::Clear(self.background_color),
@@ -99,6 +100,7 @@ impl Engine {
                         std::mem::drop(render_pass);
 
                         self.graphics_state.queue.submit(Some(encoder.finish()));
+                        frame.present();
 
                         self.shader_state.cull();
                     }
@@ -136,13 +138,13 @@ pub trait Element<Data> {
         &'a mut self,
         engine: &mut Engine,
         data: &mut Data,
-        frame: &wgpu::SwapChainFrame,
+        frame: &wgpu::SurfaceTexture,
         render_pass: &mut wgpu::RenderPass<'rp>,
     );
 }
 
-// TODO: this shit dont work. why? has i ever?
-impl<D, T: for<'rp> Fn(&mut Engine, &mut D, &wgpu::SwapChainFrame, &mut wgpu::RenderPass<'rp>)>
+// TODO: FIXME
+impl<D, T: for<'rp> Fn(&mut Engine, &mut D, &wgpu::SurfaceTexture, &mut wgpu::RenderPass<'rp>)>
     Element<D> for T
 {
     fn update(&mut self, _engine: &mut Engine, _data: &mut D, _event: &Event<()>) {}
@@ -151,7 +153,7 @@ impl<D, T: for<'rp> Fn(&mut Engine, &mut D, &wgpu::SwapChainFrame, &mut wgpu::Re
         &'a mut self,
         engine: &mut Engine,
         data: &mut D,
-        frame: &wgpu::SwapChainFrame,
+        frame: &wgpu::SurfaceTexture,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {
         (self)(engine, data, frame, render_pass)

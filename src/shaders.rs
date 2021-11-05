@@ -259,7 +259,6 @@ impl ShaderState {
                                 let desc = ShaderModuleDescriptor {
                                     label: None,
                                     source: wgpu::ShaderSource::SpirV(res.as_binary().into()),
-                                    flags: wgpu::ShaderFlags::default(),
                                 };
                                 sm.insert(
                                     key,
