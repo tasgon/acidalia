@@ -10,5 +10,5 @@ acidalia = { path = ".." }
 
 bytemuck = "1.5"
 
-iced_wgpu = { git = "https://github.com/tasgon/iced", branch = "winit_ver" }
-iced_winit = { git = "https://github.com/tasgon/iced", branch = "winit_ver", default-features = false, features = ["mainline_winit"] }
+iced_wgpu = { git = "https://github.com/iced-rs/iced", branch = "0.4" }
+iced_winit = { git = "https://github.com/iced-rs/iced", branch = "0.4" }
