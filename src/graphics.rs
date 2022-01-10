@@ -1,12 +1,16 @@
 use std::{num::NonZeroU32, sync::Arc};
 
 //use futures::executor::block_on;
-use crate::wgpu::{self, Backend};
+use crate::wgpu::{self};
 use crate::winit;
 use futures;
 
 use futures::executor::block_on;
-use wgpu::{Backends, BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder, CommandEncoderDescriptor, Device, PipelineLayout, PipelineLayoutDescriptor, PushConstantRange, ShaderStages};
+use wgpu::{
+    Backends, BindGroup, BindGroupEntry, BindGroupLayout, BindGroupLayoutEntry, BindingResource,
+    BindingType, CommandEncoder, CommandEncoderDescriptor, Device, PipelineLayout,
+    PipelineLayoutDescriptor, PushConstantRange, ShaderStages,
+};
 use winit::dpi::PhysicalSize;
 
 /// A struct containing everything necessary to interact with wgpu.
@@ -69,7 +73,8 @@ impl GraphicsState {
         self.size = size;
         self.swapchain_descriptor.width = size.width;
         self.swapchain_descriptor.height = size.height;
-        self.surface.configure(&self.device, &self.swapchain_descriptor);
+        self.surface
+            .configure(&self.device, &self.swapchain_descriptor);
     }
 
     /// Gets the swapchain's frame size.

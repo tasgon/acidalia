@@ -1,0 +1,18 @@
+[package]
+name = "acidalia_imgui"
+version = "0.1.0"
+edition = "2021"
+authors = ["tasgon <tasgon_@outlook.com>"]
+description = "Imgui integration for acidalia"
+license = "MPL-2.0"
+repository = "https://github.com/tasgon/acidalia"
+keywords = ["acidalia", "imgui", "acidalia_imgui"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+acidalia = { path = ".." }
+
+imgui-wgpu = "0.19"
+imgui = "0.8"
+imgui-winit-support = { version = "0.8", default-features = false, features = ["winit-26"] }

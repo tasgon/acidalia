@@ -1,0 +1,16 @@
+[package]
+name = "acidalia_2d"
+version = "0.1.0"
+authors = ["tasgon <tasgon_@outlook.com>"]
+edition = "2021"
+description = "acidalia's 2D canvas"
+license = "MPL-2.0"
+repository = "https://github.com/tasgon/acidalia"
+keywords = ["acidalia", "2d"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+acidalia = { path = ".." }
+
+image = "0.23"

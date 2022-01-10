@@ -1,7 +1,5 @@
-use acidalia::ui::{imgui, ImguiElement};
-use acidalia::{screen, wgpu, Engine, EngineBuilder};
-use imgui::im_str;
-use winit::window::WindowBuilder;
+use acidalia::{screen, EngineBuilder};
+use acidalia_imgui::{imgui, ImguiElement};
 
 #[derive(Default)]
 struct Data {
@@ -19,17 +17,17 @@ fn main() {
         .build();
     let ui_el = ImguiElement::new(
         |ui, _engine, d: &mut Data| {
-            imgui::Window::new(im_str!("Main")).build(ui, || {
-                if ui.small_button(im_str!("Increment count")) {
+            imgui::Window::new("Main").build(ui, || {
+                if ui.small_button("Increment count") {
                     d.count += 1;
                 }
 
-                ui.text(im_str!("Count: {}", d.count));
+                ui.text(format!("Count: {}", d.count));
             });
         },
         &engine,
     );
 
     let data = Data::default();
-    // engine.run(, data);
+    engine.run(screen!(ui_el), data);
 }

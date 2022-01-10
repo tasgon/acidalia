@@ -13,7 +13,6 @@ use notify::{
     EventKind, RecommendedWatcher, Watcher,
 };
 use shaderc;
-use std::{path::PathBuf, num::NonZeroU32};
 use std::{
     collections::hash_map::RandomState,
     ops::Deref,
@@ -21,6 +20,7 @@ use std::{
     sync::{Arc, RwLock, Weak},
     thread::JoinHandle,
 };
+use std::{num::NonZeroU32, path::PathBuf};
 use wgpu::{ComputePipeline, PipelineLayout, RenderPipeline, ShaderModule, ShaderModuleDescriptor};
 
 use crate::graphics::GraphicsState;
@@ -484,7 +484,7 @@ pub struct RenderPipelineBuilder<'a> {
     primitive: wgpu::PrimitiveState,
     depth_stencil: Option<wgpu::DepthStencilState>,
     multisample: wgpu::MultisampleState,
-    multiview: Option<NonZeroU32>
+    multiview: Option<NonZeroU32>,
 }
 
 impl<'a> RenderPipelineBuilder<'a> {
@@ -515,7 +515,7 @@ impl<'a> RenderPipelineBuilder<'a> {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
-            multiview: None
+            multiview: None,
         }
     }
 
@@ -608,7 +608,7 @@ impl<'a> RenderPipelineBuilder<'a> {
                 primitive,
                 depth_stencil: depth_stencil.clone(),
                 multisample,
-                multiview
+                multiview,
             })
             .into()
         }) as Manufacturer;

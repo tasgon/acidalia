@@ -1,8 +1,8 @@
-use crate::wgpu;
+use acidalia::wgpu;
 use core::marker::PhantomData;
 pub use imgui::{self, *};
 
-use crate::engine::{Element, Engine};
+use acidalia::{Element, Engine};
 
 /// Builds and renders an [`imgui::Ui`] constructed from a user-defined function.
 pub struct ImguiElement<Data, F: Fn(&Ui, &Engine, &mut Data)> {
@@ -66,7 +66,7 @@ impl<Data, F: Fn(&Ui, &Engine, &mut Data)> Element<Data> for ImguiElement<Data, 
         &mut self,
         engine: &mut Engine,
         _data: &mut Data,
-        event: &crate::winit::event::Event<()>,
+        event: &acidalia::winit::event::Event<()>,
     ) {
         self.platform
             .handle_event(self.gui.io_mut(), &engine.window, event);

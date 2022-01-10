@@ -77,7 +77,9 @@ impl Engine {
                             &wgpu::CommandEncoderDescriptor { label: None },
                         );
 
-                        let view = &frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+                        let view = &frame
+                            .texture
+                            .create_view(&wgpu::TextureViewDescriptor::default());
                         let mut render_pass =
                             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                                 label: None,

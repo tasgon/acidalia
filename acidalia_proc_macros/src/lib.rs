@@ -32,3 +32,9 @@ pub fn nametag_derive(input: TokenStream) -> TokenStream {
 
     return TokenStream::new();
 }
+
+// #[proc_macro_derive(FnAlias)]
+// pub fn fnalias_derive(input: TokenStream) -> TokenStream {
+//     let ast: DeriveInput = syn::parse(input).unwrap();
+//     TokenStream::new()
+// }

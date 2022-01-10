@@ -1,19 +1,20 @@
-use crate::Element;
+use acidalia::{wgpu, winit, Element};
 
-pub struct Canvas {
-
-}
+pub struct Canvas {}
 
 impl Canvas {
     pub fn new() -> Self {
-        Self {
-
-        }
+        Self {}
     }
 }
 
 impl<Data> Element<Data> for Canvas {
-    fn update(&mut self, engine: &mut crate::Engine, data: &mut Data, event: &winit::event::Event<()>) {
+    fn update(
+        &mut self,
+        engine: &mut crate::Engine,
+        data: &mut Data,
+        event: &winit::event::Event<()>,
+    ) {
         todo!()
     }
 
@@ -31,5 +32,5 @@ impl<Data> Element<Data> for Canvas {
 pub trait CanvasElement<Data> {
     fn update(&mut self, data: &mut Data);
 
-    fn draw(&mut self);
+    fn draw(&mut self, data: &mut Data);
 }

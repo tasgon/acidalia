@@ -1,10 +1,14 @@
 use std::{num::NonZeroU32, path::Path};
 
+use acidalia::wgpu::{
+    AddressMode, Extent3d, FilterMode, ImageCopyTexture, Origin3d, Sampler, Texture,
+    TextureDescriptor, TextureUsages, TextureView, TextureViewDescriptor,
+};
 use image::ImageError;
-use wgpu::{AddressMode, Extent3d, FilterMode, ImageCopyTexture, Origin3d, Sampler, Texture, TextureDescriptor, TextureUsages, TextureView, TextureViewDescriptor};
 
-use crate::{Engine, GraphicsState};
+use acidalia::{wgpu, Engine, GraphicsState};
 
+/// A standard 2D sprite.
 pub struct Sprite {
     pub texture: Texture,
     pub view: TextureView,
@@ -53,24 +57,24 @@ impl Sprite {
             size,
         );
         let view = texture.create_view(&TextureViewDescriptor::default());
-        let sampler = gs.device.create_sampler(custom_sampler.unwrap_or(&wgpu::SamplerDescriptor {
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mag_filter: FilterMode::Linear,
-            min_filter: FilterMode::Nearest,
-            ..Default::default()
-        }));
+        let sampler =
+            gs.device
+                .create_sampler(custom_sampler.unwrap_or(&wgpu::SamplerDescriptor {
+                    address_mode_u: AddressMode::ClampToEdge,
+                    address_mode_v: AddressMode::ClampToEdge,
+                    address_mode_w: AddressMode::ClampToEdge,
+                    mag_filter: FilterMode::Linear,
+                    min_filter: FilterMode::Nearest,
+                    ..Default::default()
+                }));
         Ok(Self {
             texture,
             view,
             sampler,
-            size
+            size,
         })
     }
 
     /// Draw the sprite to a screen.
-    pub fn draw(engine: &mut Engine) {
-        
-    }
+    pub fn draw(engine: &mut Engine) {}
 }

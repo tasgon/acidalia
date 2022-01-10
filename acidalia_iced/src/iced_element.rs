@@ -15,11 +15,7 @@ use iced_winit::{
     Clipboard, Debug, Program, Size,
 };
 
-use crate::{
-    engine::{Element, Engine},
-    graphics::ToExtent,
-    shaders::InternalShaders,
-};
+use acidalia::{graphics::ToExtent, shaders::InternalShaders, Element, Engine};
 
 const INDICES: &[u16] = &[0, 2, 1, 1, 2, 3];
 const NUM_INDICES: u32 = 6;
@@ -31,7 +27,7 @@ const NUM_INDICES: u32 = 6;
 #[allow(dead_code)]
 pub struct IcedElement<
     D,
-    T: Program<Renderer = Renderer, Clipboard = Clipboard> + 'static,
+    T: Program<Renderer = Renderer> + 'static,
     F: FnMut(&mut program::State<T>, &mut D),
 > {
     state: program::State<T>,
@@ -56,11 +52,8 @@ pub struct IcedElement<
     pipeline: Arc<wgpu::RenderPipeline>,
 }
 
-impl<
-        D,
-        T: Program<Renderer = Renderer, Clipboard = Clipboard>,
-        F: FnMut(&mut program::State<T>, &mut D),
-    > IcedElement<D, T, F>
+impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D)>
+    IcedElement<D, T, F>
 {
     /// Construct an `IcedElement` given a program object and a processing function.
     pub fn new(engine: &mut Engine, iced_program: T, func: F) -> Self {
@@ -70,14 +63,17 @@ impl<
             Size::new(gs.get_size().width, gs.get_size().height),
             engine.window.scale_factor(),
         );
-        let mut renderer = Renderer::new(Backend::new(&mut gs.device, Settings::default()));
+        let mut renderer = Renderer::new(Backend::new(
+            &mut gs.device,
+            Settings::default(),
+            wgpu::TextureFormat::Bgra8UnormSrgb,
+        ));
         let clipboard = Clipboard::connect(&engine.window);
         let cursor_position = PhysicalPosition::new(-1.0, -1.0);
         let modifiers = ModifiersState::default();
         let state = program::State::new(
             iced_program,
             viewport.logical_size(),
-            conversion::cursor_position(cursor_position, viewport.scale_factor()),
             &mut renderer,
             &mut debug,
         );
@@ -88,7 +84,7 @@ impl<
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
         });
         let dest_view = dest_tex.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = gs.device.create_sampler(&wgpu::SamplerDescriptor {
@@ -105,26 +101,23 @@ impl<
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("iced index buf"),
                 contents: bytemuck::cast_slice(INDICES),
-                usage: wgpu::BufferUsage::INDEX,
+                usage: wgpu::BufferUsages::INDEX,
             });
         let bind_group_layout = gs
             .bind_group_layout("iced bgl")
             .add(
                 None,
-                wgpu::ShaderStage::FRAGMENT,
+                wgpu::ShaderStages::FRAGMENT,
                 wgpu::BindingType::Texture {
                     multisampled: false,
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                 },
             )
             .add(
                 None,
-                wgpu::ShaderStage::FRAGMENT,
-                wgpu::BindingType::Sampler {
-                    comparison: false,
-                    filtering: true,
-                },
+                wgpu::ShaderStages::FRAGMENT,
+                wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             )
             .build();
         let bind_group = gs
@@ -142,17 +135,21 @@ impl<
                 InternalShaders::IcedFrag,
                 wgpu::ColorTargetState {
                     format,
-                    alpha_blend: wgpu::BlendState::REPLACE,
-                    color_blend: wgpu::BlendState::REPLACE,
-                    write_mask: wgpu::ColorWrite::ALL,
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent::OVER,
+                        alpha: wgpu::BlendComponent::OVER,
+                    }),
+                    write_mask: wgpu::ColorWrites::ALL,
                 },
             )
             .primitive(wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: wgpu::CullMode::Back,
+                cull_mode: Some(wgpu::Face::Back),
                 polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
             })
             .depth_stencil(None)
             .multisample(1, !0, false)
@@ -181,17 +178,14 @@ impl<
     }
 }
 
-impl<
-        D,
-        T: Program<Renderer = Renderer, Clipboard = Clipboard>,
-        F: FnMut(&mut program::State<T>, &mut D),
-    > Element<D> for IcedElement<D, T, F>
+impl<D, T: Program<Renderer = Renderer>, F: FnMut(&mut program::State<T>, &mut D)> Element<D>
+    for IcedElement<D, T, F>
 {
     fn update(
         &mut self,
         engine: &mut Engine,
         data: &mut D,
-        event: &winit::event::Event<()>,
+        event: &acidalia::winit::event::Event<()>,
     ) {
         match event {
             Event::WindowEvent { event: wev, .. } => {
@@ -215,14 +209,14 @@ impl<
                             size: wgpu::Extent3d {
                                 width: gs.get_size().width,
                                 height: gs.get_size().height,
-                                depth: 1,
+                                depth_or_array_layers: 1,
                             },
                             format: wgpu::TextureFormat::Bgra8UnormSrgb,
                             mip_level_count: 1,
                             sample_count: 1,
                             dimension: wgpu::TextureDimension::D2,
-                            usage: wgpu::TextureUsage::SAMPLED
-                                | wgpu::TextureUsage::RENDER_ATTACHMENT,
+                            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                                | wgpu::TextureUsages::RENDER_ATTACHMENT,
                         });
                         self.dest_view = self
                             .dest_tex
@@ -267,7 +261,7 @@ impl<
         &'a mut self,
         engine: &mut Engine,
         _data: &mut D,
-        _frame: &wgpu::SwapChainFrame,
+        _frame: &wgpu::SurfaceTexture,
         render_pass: &mut wgpu::RenderPass<'rp>,
     ) {
         let gs = &mut engine.graphics_state;
@@ -275,8 +269,8 @@ impl<
 
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &self.dest_view,
+            color_attachments: &[wgpu::RenderPassColorAttachment {
+                view: &self.dest_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -286,15 +280,17 @@ impl<
             depth_stencil_attachment: None,
         });
 
-        self.renderer.backend_mut().draw(
-            &gs.device,
-            &mut self.staging_belt,
-            &mut encoder,
-            &self.dest_view,
-            &self.viewport,
-            self.state.primitive(),
-            &self.debug.overlay(),
-        );
+        self.renderer.with_primitives(|backend, primitive| {
+            backend.present(
+                &gs.device,
+                &mut self.staging_belt,
+                &mut encoder,
+                &self.dest_view,
+                primitive,
+                &self.viewport,
+                &self.debug.overlay(),
+            )
+        });
 
         self.staging_belt.finish();
         gs.queue.submit(Some(encoder.finish()));

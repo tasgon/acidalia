@@ -1,0 +1,14 @@
+[package]
+name = "acidalia_iced"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+acidalia = { path = ".." }
+
+bytemuck = "1.5"
+
+iced_wgpu = { git = "https://github.com/tasgon/iced", branch = "winit_ver" }
+iced_winit = { git = "https://github.com/tasgon/iced", branch = "winit_ver", default-features = false, features = ["mainline_winit"] }
