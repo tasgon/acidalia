@@ -1,22 +1,22 @@
 use crate::wgpu;
-use __core::marker::PhantomData;
+use core::marker::PhantomData;
 pub use imgui::{self, *};
 
 use crate::engine::{Element, Engine};
 
 /// Builds and renders an [`imgui::Ui`] constructed from a user-defined function.
-pub struct ImguiElement<T, F: Fn(&Ui, &Engine, &mut T)> {
+pub struct ImguiElement<Data, F: Fn(&Ui, &Engine, &mut Data)> {
     func: F,
     // Note to self (since I forgot): this `PhantomData` is here because otherwise the type T
     // has nothing to attach to, so I have to create a 0-sized element here.
-    _phantom: PhantomData<T>,
+    _phantom: PhantomData<Data>,
     gui: imgui::Context,
     renderer: imgui_wgpu::Renderer,
     platform: imgui_winit_support::WinitPlatform,
     last_cursor: Option<Option<imgui::MouseCursor>>,
 }
 
-impl<T, F: Fn(&Ui, &Engine, &mut T)> ImguiElement<T, F> {
+impl<Data, F: Fn(&Ui, &Engine, &mut Data)> ImguiElement<Data, F> {
     /// Construct a new `ImguiElement` from a function, which will take in a `Ui` struct and modify it
     /// as needed before drawing.
     pub fn new(func: F, engine: &Engine) -> Self {
@@ -61,11 +61,11 @@ impl<T, F: Fn(&Ui, &Engine, &mut T)> ImguiElement<T, F> {
     }
 }
 
-impl<T, F: Fn(&Ui, &Engine, &mut T)> Element<T> for ImguiElement<T, F> {
+impl<Data, F: Fn(&Ui, &Engine, &mut Data)> Element<Data> for ImguiElement<Data, F> {
     fn update(
         &mut self,
         engine: &mut Engine,
-        _data: &mut T,
+        _data: &mut Data,
         event: &crate::winit::event::Event<()>,
     ) {
         self.platform
@@ -75,9 +75,9 @@ impl<T, F: Fn(&Ui, &Engine, &mut T)> Element<T> for ImguiElement<T, F> {
     fn render<'a: 'rp, 'rp>(
         &'a mut self,
         engine: &mut Engine,
-        data: &mut T,
+        data: &mut Data,
         _frame: &wgpu::SurfaceTexture,
-        rpass: &mut wgpu::RenderPass<'rp>,
+        render_pass: &mut wgpu::RenderPass<'rp>,
     ) {
         let gs = &engine.graphics_state;
         self.platform
@@ -93,9 +93,9 @@ impl<T, F: Fn(&Ui, &Engine, &mut T)> Element<T> for ImguiElement<T, F> {
         }
 
         self.renderer
-            .render(ui.render(), &gs.queue, &gs.device, rpass)
+            .render(ui.render(), &gs.queue, &gs.device, render_pass)
             .unwrap();
 
-        std::mem::drop(rpass);
+        std::mem::drop(render_pass);
     }
 }

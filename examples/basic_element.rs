@@ -1,6 +1,7 @@
 use acidalia::ui::{imgui, ImguiElement};
 use acidalia::{screen, wgpu, Engine, EngineBuilder};
 use imgui::im_str;
+use winit::window::WindowBuilder;
 
 #[derive(Default)]
 struct Data {

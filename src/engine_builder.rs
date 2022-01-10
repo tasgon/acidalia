@@ -5,7 +5,7 @@ use crate::Engine;
 /// The tool that builds your engine for you.
 #[derive(Default)]
 pub struct EngineBuilder {
-    pub(crate) wb: WindowBuilder,
+    pub(crate) window_builder: WindowBuilder,
     pub bg_color: crate::wgpu::Color,
 }
 
@@ -14,7 +14,7 @@ impl EngineBuilder {
     /// Refer to
     pub fn new(mut window_fn: impl (FnMut(WindowBuilder) -> WindowBuilder)) -> Self {
         Self {
-            wb: window_fn(WindowBuilder::new()),
+            window_builder: window_fn(WindowBuilder::new()),
             bg_color: Default::default(),
         }
     }

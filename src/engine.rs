@@ -27,7 +27,7 @@ impl Engine {
     /// will be available in the future, likely through an `EngineBuilder`.
     pub fn new(eb: EngineBuilder) -> Self {
         let event_loop = EventLoop::new();
-        let window = eb.wb.build(&event_loop).unwrap();
+        let window = eb.window_builder.build(&event_loop).unwrap();
         let graphics_state = GraphicsState::new(&window);
         let mut shader_state = ShaderState::new(&graphics_state);
         shader_state.init_shaders();
@@ -141,23 +141,6 @@ pub trait Element<Data> {
         frame: &wgpu::SurfaceTexture,
         render_pass: &mut wgpu::RenderPass<'rp>,
     );
-}
-
-// TODO: FIXME
-impl<D, T: for<'rp> Fn(&mut Engine, &mut D, &wgpu::SurfaceTexture, &mut wgpu::RenderPass<'rp>)>
-    Element<D> for T
-{
-    fn update(&mut self, _engine: &mut Engine, _data: &mut D, _event: &Event<()>) {}
-
-    fn render<'a: 'rp, 'rp>(
-        &'a mut self,
-        engine: &mut Engine,
-        data: &mut D,
-        frame: &wgpu::SurfaceTexture,
-        render_pass: &mut wgpu::RenderPass<'rp>,
-    ) {
-        (self)(engine, data, frame, render_pass)
-    }
 }
 
 /// A list of `Elements` that will all update and draw on the screen.

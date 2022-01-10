@@ -20,20 +20,20 @@ default = []
 [dependencies]
 shaderc = "0.7"
 futures = "0.3"
-wgpu = { version = "0.11", features = ["spirv"] }
-winit = "0.25"
+wgpu = { version = "0.12", features = ["spirv"] }
+winit = "0.26"
 derive_more = "0.99"
 bytemuck = "1.5"
 acidalia_proc_macros = { path = "./acidalia_proc_macros/", version = "0.1" }
 acidalia_core = { path = "./acidalia_core", version = "0.1" }
 
 crossbeam-channel = "0.5.0"
-notify = "5.0.0-pre.6"
-dashmap = "4.0"
+notify = "5.0.0-pre.13"
+dashmap = "5.0"
 
-imgui-wgpu = "0.18"
+imgui-wgpu = "0.19"
 imgui = "0.8"
-imgui-winit-support = { version = "0.8", default-features = false, features = ["winit-25"] }
+imgui-winit-support = { version = "0.8", default-features = false, features = ["winit-26"] }
 
 image = "0.23"
 

@@ -13,7 +13,7 @@ use notify::{
     EventKind, RecommendedWatcher, Watcher,
 };
 use shaderc;
-use std::path::PathBuf;
+use std::{path::PathBuf, num::NonZeroU32};
 use std::{
     collections::hash_map::RandomState,
     ops::Deref,
@@ -175,7 +175,7 @@ impl ShaderState {
         let (tx, rx) = crossbeam_channel::unbounded::<CompilerMessage>();
         let tx2 = tx.clone();
         let watcher: RecommendedWatcher =
-            Watcher::new_immediate(move |ev: Result<notify::Event, notify::Error>| match ev {
+            notify::recommended_watcher(move |ev: Result<notify::Event, notify::Error>| match ev {
                 Ok(event) => {
                     // TODO: log
                     // println!("{:?}", event);
@@ -484,6 +484,7 @@ pub struct RenderPipelineBuilder<'a> {
     primitive: wgpu::PrimitiveState,
     depth_stencil: Option<wgpu::DepthStencilState>,
     multisample: wgpu::MultisampleState,
+    multiview: Option<NonZeroU32>
 }
 
 impl<'a> RenderPipelineBuilder<'a> {
@@ -505,7 +506,7 @@ impl<'a> RenderPipelineBuilder<'a> {
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(wgpu::Face::Back),
                 polygon_mode: wgpu::PolygonMode::Fill,
-                clamp_depth: false,
+                unclipped_depth: false,
                 conservative: false,
             },
             depth_stencil: None,
@@ -514,6 +515,7 @@ impl<'a> RenderPipelineBuilder<'a> {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
+            multiview: None
         }
     }
 
@@ -552,12 +554,19 @@ impl<'a> RenderPipelineBuilder<'a> {
         self
     }
 
+    /// Set the multiview attachments (if it is relevant or there are any).
+    pub fn multiview(mut self, multiview: impl Into<Option<NonZeroU32>>) -> Self {
+        self.multiview = multiview.into();
+        self
+    }
+
     /// Add the info to the render pipeline manufactory and immediately give back a [`wgpu::RenderPipeline`].
     pub fn build(self) -> Arc<RenderPipeline> {
         let lbl = self.label.clone();
         let state = self.state;
         let multisample = self.multisample;
         let primitive = self.primitive;
+        let multiview = self.multiview;
         let depth_stencil = self.depth_stencil;
         let layout = self.layout;
         let vert_ref = state.shader_map.get(&self.vertex).unwrap();
@@ -596,9 +605,10 @@ impl<'a> RenderPipelineBuilder<'a> {
                         targets: targets.as_slice(),
                     }
                 }),
-                primitive: primitive.clone(),
+                primitive,
                 depth_stencil: depth_stencil.clone(),
-                multisample: multisample.clone(),
+                multisample,
+                multiview
             })
             .into()
         }) as Manufacturer;

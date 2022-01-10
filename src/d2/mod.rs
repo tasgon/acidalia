@@ -1,6 +1,8 @@
 mod sprite;
-
 pub use sprite::Sprite;
+
+mod canvas;
+pub use canvas::Canvas;
 
 use crate::Engine;
 
